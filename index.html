@@ -1,5 +1,4 @@
-    /* 比例設定：2/3 上半部, 1/3 下半部 */
-    .glass-top { background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(8px); border-bottom: 2px solid rgba(56, 189, 248, 0.2); }
+   .glass-top { background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(8px); border-bottom: 2px solid rgba(56, 189, 248, 0.2); }
     .glass-bottom { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); border-top: 2px solid rgba(56, 189, 248, 0.3); }
     
     #qrcode { 
@@ -21,7 +20,6 @@
 
 <!-- iPad 主控畫面 (Host) -->
 <div id="host-view" class="view-section relative z-10 flex-col h-screen w-full">
-    <!-- 上半部 2/3：QR Code 區域 -->
     <div class="h-2/3 flex flex-col items-center justify-center glass-top p-12">
         <h1 class="text-7xl font-black tech-font text-sky-400 mb-10 tracking-widest italic">SPY_CODE</h1>
         <div id="qrcode-container" class="bg-white p-4 rounded-[2.5rem] transition-transform duration-500 hover:scale-105">
@@ -32,7 +30,6 @@
         </p>
     </div>
 
-    <!-- 下半部 1/3：按鈕與數據 -->
     <div class="h-1/3 flex flex-col items-center justify-center glass-bottom px-20 gap-8">
         <div id="player-count" class="text-6xl font-black text-emerald-400 tech-font">AGENT_ONLINE: 0</div>
         
@@ -44,7 +41,7 @@
                 <i class="fa-solid fa-rotate-right"></i>
             </button>
         </div>
-        <p id="status-text" class="text-2xl font-mono text-slate-500 tracking-tighter">SERVER_STATUS: INITIALIZING...</p>
+        <p id="status-text" class="text-2xl font-mono text-yellow-500 tracking-tighter italic">SYSTEM: INITIALIZING...</p>
     </div>
 </div>
 
@@ -69,9 +66,8 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // 這是你截圖中的最新設定
     const firebaseConfig = {
         apiKey: "AIzaSyAoHd1FJze2LfNPTP0f2an_yTwSMaKiuP4",
         authDomain: "spy-mind-reading.firebaseapp.com",
@@ -87,7 +83,7 @@
 
     async function init() {
         const params = new URLSearchParams(window.location.search);
-        const isHost = params.get('mode') === 'host' || window.innerWidth > 768;
+        const isHost = params.get('mode') === 'host' || (window.innerWidth > 768 && !params.get('mode'));
 
         if (isHost) {
             document.getElementById('host-view').classList.add('active-view');
@@ -99,6 +95,7 @@
         startRadarAnimation();
 
         try {
+            updateStatus("SYSTEM: AUTHENTICATING...", "text-blue-400");
             const app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
@@ -115,7 +112,9 @@
                 setupPlayerLogic();
             }
         } catch (error) {
-            updateStatus("ERROR: " + error.message, "text-red-500");
+            // 這裡會顯示最真實的錯誤原因！
+            updateStatus(`ERROR: ${error.code}`, "text-red-500");
+            console.error("Firebase Error Full Details:", error);
         }
     }
 
@@ -128,7 +127,9 @@
 
     function setupHostUI() {
         const playerUrl = `${window.location.origin}${window.location.pathname}?mode=player`;
-        new QRCode(document.getElementById("qrcode"), {
+        const qrcodeEl = document.getElementById("qrcode");
+        qrcodeEl.innerHTML = "";
+        new QRCode(qrcodeEl, {
             text: playerUrl,
             width: 450,
             height: 450,
@@ -138,18 +139,19 @@
 
     async function setupPlayerLogic() {
         const playerDoc = doc(db, appCollection, currentUser.uid);
-        // 每次重新進入都清空 pattern
         await setDoc(playerDoc, { uid: currentUser.uid, pattern: [], timestamp: Date.now() }, { merge: true });
 
         onSnapshot(playerDoc, (snap) => {
             const data = snap.data();
             if (data?.pattern?.length > 0) {
                 vibrationPattern = data.pattern;
-                document.getElementById('vibration-hint').innerText = "代碼接收成功！";
-                document.getElementById('vibration-hint').className = "text-3xl text-emerald-400 mt-8 animate-bounce";
-                document.getElementById('vibrate-btn').disabled = false;
-                document.getElementById('vibrate-btn').classList.add('animate-pulse');
-                document.getElementById('vibrate-btn').style.borderColor = "#34d399";
+                const hint = document.getElementById('vibration-hint');
+                hint.innerText = "代碼接收成功！";
+                hint.className = "text-3xl text-emerald-400 mt-8 animate-bounce";
+                const btn = document.getElementById('vibrate-btn');
+                btn.disabled = false;
+                btn.classList.add('animate-pulse');
+                btn.style.borderColor = "#34d399";
             }
         });
     }
@@ -159,30 +161,19 @@
         try {
             const snap = await getDocs(collection(db, appCollection));
             const ids = snap.docs.map(d => d.id);
-            
-            if (ids.length === 0) {
-                alert("目前沒有玩家加入！");
-                updateStatus("SYSTEM: NO_AGENTS_FOUND", "text-red-400");
-                return;
-            }
+            if (ids.length === 0) return alert("目前沒有玩家加入！");
 
-            const patterns = [
-                [100, 100, 600], 
-                [600, 100, 100], 
-                [100, 500, 100]  
-            ];
-
-            const batchPromises = ids.map((id, index) => {
-                return updateDoc(doc(db, appCollection, id), { 
+            const patterns = [[100, 100, 600], [600, 100, 100], [100, 500, 100]];
+            const batchPromises = ids.map((id, index) => 
+                updateDoc(doc(db, appCollection, id), { 
                     pattern: patterns[index % patterns.length],
                     timestamp: Date.now() 
-                });
-            });
-
+                })
+            );
             await Promise.all(batchPromises);
-            updateStatus("SYSTEM: CODES_DISTRIBUTED_SUCCESSFULLY", "text-emerald-400");
+            updateStatus("SYSTEM: CODES_DISTRIBUTED", "text-emerald-400");
         } catch (e) {
-            updateStatus("ERROR: DISTRIBUTE_FAILED", "text-red-500");
+            updateStatus(`ERROR: ${e.code}`, "text-red-500");
         }
     };
 
