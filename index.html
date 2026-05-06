@@ -26,7 +26,7 @@
 
     <div id="host-view" class="view-section relative z-10 flex-col h-screen w-full">
         <div class="h-2/3 flex flex-col items-center justify-center glass-top p-12">
-            <h1 class="text-7xl font-black tech-font text-sky-400 mb-10 tracking-widest italic">SPY_CODE</h1>
+            <h1 class="text-7xl font-black tech-font text-sky-400 mb-10 tracking-widest italic">SPY_CODE <span class="text-2xl text-slate-500">v2</span></h1>
             <div id="qrcode-container" class="bg-white p-4 rounded-[2.5rem] transition-transform duration-500 hover:scale-105">
                 <div id="qrcode"></div>
             </div>
@@ -45,7 +45,6 @@
                     <i class="fa-solid fa-rotate-right"></i>
                 </button>
             </div>
-            <!-- 重點：這裡的字串已經改掉了，如果還看到舊的，就是快取問題 -->
             <p id="status-text" class="text-2xl font-mono text-yellow-500 tracking-tighter italic">DIAGNOSTIC_INIT: READY...</p>
         </div>
     </div>
@@ -109,11 +108,8 @@
                     setupPlayerLogic();
                 }
             } catch (error) {
-                // 此處不再有 generic 字串，直接顯示報錯代碼
                 const errorCode = error.code || "unknown_error";
-                const errorMsg = error.message || "";
                 updateStatus(`FATAL_DIAGNOSTIC: ${errorCode}`, "text-red-500");
-                console.error("Firebase Init Error:", error);
             }
         }
 
