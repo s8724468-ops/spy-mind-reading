@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>臥底讀心術 - iPad 巨幕版</title>
+    <title>臥底讀心術 - iPad 巨幕修復版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -14,8 +14,10 @@
         canvas { display: block; position: absolute; inset: 0; z-index: 0; opacity: 0.4; }
         .glass-top { background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(8px); border-bottom: 2px solid rgba(56, 189, 248, 0.2); }
         .glass-bottom { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); border-top: 2px solid rgba(56, 189, 248, 0.3); }
-        #qrcode { box-shadow: 0 0 80px rgba(56, 189, 248, 0.3); border: 12px solid white; border-radius: 2rem; }
-        #qrcode img { margin: auto; border-radius: 1rem; }
+        #qrcode { box-shadow: 0 0 80px rgba(56, 189, 248, 0.3); border: 12px solid white; border-radius: 2rem; display: flex; justify-content: center; align-items: center; }
+        #qrcode img { margin: auto; border-radius: 1rem; max-width: 100%; height: auto; }
+        .view-section { display: none; }
+        .active-view { display: flex !important; }
     </style>
 </head>
 <body>
@@ -23,7 +25,7 @@
     <canvas id="radarCanvas"></canvas>
 
     <!-- iPad 主控端 (Host) -->
-    <div id="host-view" class="relative z-10 flex flex-col h-screen w-full hidden">
+    <div id="host-view" class="view-section relative z-10 flex-col h-screen w-full">
         <div class="h-2/3 flex flex-col items-center justify-center glass-top p-12">
             <h1 class="text-7xl font-black tech-font text-sky-400 mb-10 tracking-widest italic">SPY_CODE</h1>
             <div id="qrcode-container" class="bg-white p-4 rounded-[2.5rem] transition-transform duration-500 hover:scale-105">
@@ -45,8 +47,7 @@
         </div>
     </div>
 
-    <!-- 手機玩家端 (Player) -->
-    <div id="player-view" class="relative z-10 flex flex-col items-center justify-between h-screen w-full p-10 hidden">
+    <div id="player-view" class="view-section relative z-10 flex-col items-center justify-between h-screen w-full p-10">
         <div class="text-center pt-20">
             <h2 class="text-5xl font-black text-sky-400 tech-font tracking-widest uppercase">Secret Terminal</h2>
             <p id="vibration-hint" class="text-3xl text-slate-400 mt-8">等待指揮官發布代碼...</p>
@@ -74,38 +75,31 @@
             measurementId: "G-NP5BZF2V6E"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
         const appId = 'spy-game-prod';
-        
-        let currentUser = null;
-        let vibrationPattern = [];
+        let db, auth, currentUser, vibrationPattern = [];
 
-        // 立即顯示畫面，不等待連線
-        window.onload = () => {
+        async function init() {
+            console.log("System Initializing...");
             const params = new URLSearchParams(window.location.search);
             const isHost = params.get('mode') === 'host' || window.innerWidth > 768;
 
             if (isHost) {
-                document.getElementById('host-view').classList.remove('hidden');
+                document.getElementById('host-view').classList.add('active-view');
                 setupHostUI();
             } else {
-                document.getElementById('player-view').classList.remove('hidden');
+                document.getElementById('player-view').classList.add('active-view');
             }
-            
-            startRadarAnimation();
-            startFirebase();
-        };
 
-        async function startFirebase() {
+            startRadarAnimation();
+
             try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                
                 const userCredential = await signInAnonymously(auth);
                 currentUser = userCredential.user;
                 document.getElementById('status-text').innerText = "SERVER_STATUS: ENCRYPTED_CHANNEL_READY";
-                
-                const params = new URLSearchParams(window.location.search);
-                const isHost = params.get('mode') === 'host' || window.innerWidth > 768;
                 
                 if (isHost) {
                     const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
@@ -116,8 +110,8 @@
                     setupPlayerLogic();
                 }
             } catch (error) {
-                console.error(error);
-                document.getElementById('status-text').innerText = "ERROR: FIREBASE_CONNECTION_FAILED";
+                console.error("Firebase Error:", error);
+                document.getElementById('status-text').innerText = "ERROR: CONNECTION_TIMEOUT";
                 document.getElementById('status-text').style.color = "#ef4444";
             }
         }
@@ -149,7 +143,6 @@
 
         window.startGame = async () => {
             const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
-            // 注意：一次性獲取快照
             onSnapshot(playersRef, async (snap) => {
                 const ids = snap.docs.map(d => d.id);
                 const patterns = [[100, 100, 600], [600, 100, 100], [100, 500, 100]];
@@ -190,6 +183,9 @@
             }
             draw();
         }
+
+        // 立即啟動
+        init();
     </script>
 </body>
 </html>
