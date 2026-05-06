@@ -1,4 +1,4 @@
-   .glass-top { background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(8px); border-bottom: 2px solid rgba(56, 189, 248, 0.2); }
+.glass-top { background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(8px); border-bottom: 2px solid rgba(56, 189, 248, 0.2); }
     .glass-bottom { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); border-top: 2px solid rgba(56, 189, 248, 0.3); }
     
     #qrcode { 
@@ -68,6 +68,7 @@
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+    // 從你提供的截圖中獲取的正確 Config
     const firebaseConfig = {
         apiKey: "AIzaSyAoHd1FJze2LfNPTP0f2an_yTwSMaKiuP4",
         authDomain: "spy-mind-reading.firebaseapp.com",
@@ -209,3 +210,4 @@
 
     init();
 </script>
+
