@@ -70,7 +70,7 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 這裡使用的是你截圖中的正確金鑰
+        // 正確的 Config，來自你的截圖
         const firebaseConfig = {
             apiKey: "AIzaSyAoHd1FJze2LfNPTP0f2an_yTwSMaKiuP4",
             authDomain: "spy-mind-reading.firebaseapp.com",
@@ -98,7 +98,6 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
                 
-                // 這裡會嘗試登入
                 const userCredential = await signInAnonymously(auth);
                 currentUser = userCredential.user;
                 updateStatus("SERVER_STATUS: ONLINE", "text-emerald-400");
@@ -111,9 +110,9 @@
                     setupPlayerLogic();
                 }
             } catch (error) {
-                // 修正：這裡會顯示真正的報錯代碼，例如 auth/unauthorized-domain
-                updateStatus(`DIAGNOSTIC_ERROR: ${error.code}`, "text-red-500");
-                console.error("Firebase Debug Info:", error);
+                // 如果失敗，將具體錯誤代碼顯示在 status-text
+                updateStatus(`DIAGNOSTIC_ERROR: ${error.code || error.message}`, "text-red-500");
+                console.error(error);
             }
         }
 
@@ -187,4 +186,3 @@
     </script>
 </body>
 </html>
-
