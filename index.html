@@ -24,7 +24,6 @@
 
     <canvas id="radarCanvas"></canvas>
 
-    <!-- iPad 主控畫面 (Host) -->
     <div id="host-view" class="view-section relative z-10 flex-col h-screen w-full">
         <div class="h-2/3 flex flex-col items-center justify-center glass-top p-12">
             <h1 class="text-7xl font-black tech-font text-sky-400 mb-10 tracking-widest italic">SPY_CODE</h1>
@@ -50,7 +49,6 @@
         </div>
     </div>
 
-    <!-- 手機玩家畫面 (Player) -->
     <div id="player-view" class="view-section relative z-10 flex-col items-center justify-between h-screen w-full p-10">
         <div class="text-center pt-20">
             <h2 class="text-5xl font-black text-sky-400 tech-font tracking-widest uppercase">Secret Terminal</h2>
@@ -70,7 +68,7 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 正確的 Config，來自你的截圖
+        // 正確的 Config，完全對照 image_9407df.png
         const firebaseConfig = {
             apiKey: "AIzaSyAoHd1FJze2LfNPTP0f2an_yTwSMaKiuP4",
             authDomain: "spy-mind-reading.firebaseapp.com",
@@ -110,7 +108,7 @@
                     setupPlayerLogic();
                 }
             } catch (error) {
-                // 如果失敗，將具體錯誤代碼顯示在 status-text
+                // 核心關鍵：顯示具體錯誤代碼到螢幕上！
                 updateStatus(`DIAGNOSTIC_ERROR: ${error.code || error.message}`, "text-red-500");
                 console.error(error);
             }
