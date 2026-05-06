@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>臥底讀心術 - 穩定修正版</title>
+    <title>臥底讀心術 - 終極診斷版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -70,6 +70,7 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // 這裡使用的是你截圖中的正確金鑰
         const firebaseConfig = {
             apiKey: "AIzaSyAoHd1FJze2LfNPTP0f2an_yTwSMaKiuP4",
             authDomain: "spy-mind-reading.firebaseapp.com",
@@ -97,6 +98,7 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
                 
+                // 這裡會嘗試登入
                 const userCredential = await signInAnonymously(auth);
                 currentUser = userCredential.user;
                 updateStatus("SERVER_STATUS: ONLINE", "text-emerald-400");
@@ -109,9 +111,9 @@
                     setupPlayerLogic();
                 }
             } catch (error) {
-                // 這裡會顯示真正的報錯代碼，例如 auth/api-key-not-valid
+                // 修正：這裡會顯示真正的報錯代碼，例如 auth/unauthorized-domain
                 updateStatus(`DIAGNOSTIC_ERROR: ${error.code}`, "text-red-500");
-                console.error(error);
+                console.error("Firebase Debug Info:", error);
             }
         }
 
@@ -126,18 +128,22 @@
         }
 
         async function setupPlayerLogic() {
-            const playerDoc = doc(db, appCollection, currentUser.uid);
-            await setDoc(playerDoc, { uid: currentUser.uid, pattern: [], timestamp: Date.now() }, { merge: true });
-            onSnapshot(playerDoc, (snap) => {
-                const data = snap.data();
-                if (data?.pattern?.length > 0) {
-                    vibrationPattern = data.pattern;
-                    document.getElementById('vibration-hint').innerText = "代碼接收成功！";
-                    const btn = document.getElementById('vibrate-btn');
-                    btn.disabled = false;
-                    btn.classList.add('animate-pulse');
-                }
-            });
+            try {
+                const playerDoc = doc(db, appCollection, currentUser.uid);
+                await setDoc(playerDoc, { uid: currentUser.uid, pattern: [], timestamp: Date.now() }, { merge: true });
+                onSnapshot(playerDoc, (snap) => {
+                    const data = snap.data();
+                    if (data?.pattern?.length > 0) {
+                        vibrationPattern = data.pattern;
+                        document.getElementById('vibration-hint').innerText = "代碼接收成功！";
+                        const btn = document.getElementById('vibrate-btn');
+                        btn.disabled = false;
+                        btn.classList.add('animate-pulse');
+                    }
+                });
+            } catch (e) {
+                updateStatus(`DB_ERROR: ${e.code}`, "text-red-500");
+            }
         }
 
         window.startGame = async () => {
@@ -150,7 +156,7 @@
                     updateDoc(doc(db, appCollection, id), { pattern: patterns[index % patterns.length], timestamp: Date.now() })
                 ));
                 updateStatus("SUCCESS: CODES_SENT", "text-emerald-400");
-            } catch (e) { updateStatus(`ERROR: ${e.code}`, "text-red-500"); }
+            } catch (e) { updateStatus(`ACTION_ERROR: ${e.code}`, "text-red-500"); }
         };
 
         window.triggerVibration = () => {
