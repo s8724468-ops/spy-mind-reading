@@ -1,22 +1,4 @@
-    .glass-top { background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(8px); border-bottom: 2px solid rgba(56, 189, 248, 0.2); }
-    .glass-bottom { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); border-top: 2px solid rgba(56, 189, 248, 0.3); }
-    
-    #qrcode { 
-        box-shadow: 0 0 80px rgba(56, 189, 248, 0.3); 
-        border: 12px solid white; 
-        border-radius: 2rem;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-    #qrcode img { margin: auto; border-radius: 1rem; max-width: 100%; height: auto; }
-    
-    .view-section { display: none; }
-    .active-view { display: flex !important; }
-</style>
-
-
-<canvas id="radarCanvas"></canvas>
+    <canvas id="radarCanvas"></canvas>
 
 <!-- iPad 主控畫面 (Host) -->
 <div id="host-view" class="view-section relative z-10 flex-col h-screen w-full">
@@ -32,7 +14,6 @@
 
     <div class="h-1/3 flex flex-col items-center justify-center glass-bottom px-20 gap-8">
         <div id="player-count" class="text-6xl font-black text-emerald-400 tech-font">AGENT_ONLINE: 0</div>
-        
         <div class="flex gap-10 w-full max-w-6xl">
             <button id="start-btn" onclick="startGame()" class="flex-[3] py-12 bg-sky-600 hover:bg-sky-500 rounded-[3rem] font-black text-6xl text-white transition-all active:scale-95 shadow-[0_0_50px_rgba(2,132,199,0.5)] border-b-8 border-sky-800">
                 發布代碼
@@ -51,13 +32,10 @@
         <h2 class="text-5xl font-black text-sky-400 tech-font tracking-widest uppercase">Secret Terminal</h2>
         <p id="vibration-hint" class="text-3xl text-slate-400 mt-8">等待指揮官發布代碼...</p>
     </div>
-
-    <button id="vibrate-btn" disabled onclick="triggerVibration()" 
-        class="w-[500px] h-[500px] max-w-[80vw] max-h-[40vh] rounded-full border-[15px] border-sky-500/20 bg-sky-900/10 flex flex-col items-center justify-center gap-10 transition-all active:scale-90 disabled:opacity-20 shadow-[0_0_100px_rgba(56,189,248,0.1)]">
+    <button id="vibrate-btn" disabled onclick="triggerVibration()" class="w-[500px] h-[500px] max-w-[80vw] max-h-[40vh] rounded-full border-[15px] border-sky-500/20 bg-sky-900/10 flex flex-col items-center justify-center gap-10 transition-all active:scale-90 disabled:opacity-20 shadow-[0_0_100px_rgba(56,189,248,0.1)]">
         <i class="fa-solid fa-fingerprint text-[180px] text-sky-400"></i>
         <span class="text-4xl font-black text-sky-300 tech-font uppercase">Press to Sense</span>
     </button>
-
     <div class="text-center pb-20">
         <p class="text-2xl text-slate-500 italic font-bold">保持沈默，尋找你的夥伴</p>
     </div>
@@ -68,7 +46,6 @@
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // 從你提供的截圖中獲取的正確 Config
     const firebaseConfig = {
         apiKey: "AIzaSyAoHd1FJze2LfNPTP0f2an_yTwSMaKiuP4",
         authDomain: "spy-mind-reading.firebaseapp.com",
@@ -86,13 +63,8 @@
         const params = new URLSearchParams(window.location.search);
         const isHost = params.get('mode') === 'host' || (window.innerWidth > 768 && !params.get('mode'));
 
-        if (isHost) {
-            document.getElementById('host-view').classList.add('active-view');
-            setupHostUI();
-        } else {
-            document.getElementById('player-view').classList.add('active-view');
-        }
-
+        document.getElementById(isHost ? 'host-view' : 'player-view').classList.add('active-view');
+        if (isHost) setupHostUI();
         startRadarAnimation();
 
         try {
@@ -103,7 +75,7 @@
             
             const userCredential = await signInAnonymously(auth);
             currentUser = userCredential.user;
-            updateStatus("SERVER_STATUS: ONLINE_SECURE", "text-emerald-400");
+            updateStatus("SERVER_STATUS: ONLINE", "text-emerald-400");
             
             if (isHost) {
                 onSnapshot(collection(db, appCollection), (snap) => {
@@ -113,78 +85,52 @@
                 setupPlayerLogic();
             }
         } catch (error) {
-            // 這裡會顯示最真實的錯誤原因！
-            updateStatus(`ERROR: ${error.code}`, "text-red-500");
-            console.error("Firebase Error Full Details:", error);
+            // 這裡會顯示真正的報錯代碼，例如 auth/api-key-not-valid
+            updateStatus(`DIAGNOSTIC_ERROR: ${error.code}`, "text-red-500");
+            console.error(error);
         }
     }
 
     function updateStatus(text, colorClass) {
         const el = document.getElementById('status-text');
-        if (!el) return;
-        el.innerText = text;
-        el.className = `text-2xl font-mono tracking-tighter ${colorClass}`;
+        if (el) { el.innerText = text; el.className = `text-2xl font-mono tracking-tighter ${colorClass}`; }
     }
 
     function setupHostUI() {
         const playerUrl = `${window.location.origin}${window.location.pathname}?mode=player`;
-        const qrcodeEl = document.getElementById("qrcode");
-        qrcodeEl.innerHTML = "";
-        new QRCode(qrcodeEl, {
-            text: playerUrl,
-            width: 450,
-            height: 450,
-            colorDark: "#020617"
-        });
+        new QRCode(document.getElementById("qrcode"), { text: playerUrl, width: 450, height: 450, colorDark: "#020617" });
     }
 
     async function setupPlayerLogic() {
         const playerDoc = doc(db, appCollection, currentUser.uid);
         await setDoc(playerDoc, { uid: currentUser.uid, pattern: [], timestamp: Date.now() }, { merge: true });
-
         onSnapshot(playerDoc, (snap) => {
             const data = snap.data();
             if (data?.pattern?.length > 0) {
                 vibrationPattern = data.pattern;
-                const hint = document.getElementById('vibration-hint');
-                hint.innerText = "代碼接收成功！";
-                hint.className = "text-3xl text-emerald-400 mt-8 animate-bounce";
+                document.getElementById('vibration-hint').innerText = "代碼接收成功！";
                 const btn = document.getElementById('vibrate-btn');
                 btn.disabled = false;
                 btn.classList.add('animate-pulse');
-                btn.style.borderColor = "#34d399";
             }
         });
     }
 
     window.startGame = async () => {
-        updateStatus("SYSTEM: CALCULATING_PATTERNS...", "text-sky-400");
+        updateStatus("SYSTEM: DISTRIBUTING...", "text-sky-400");
         try {
             const snap = await getDocs(collection(db, appCollection));
             const ids = snap.docs.map(d => d.id);
-            if (ids.length === 0) return alert("目前沒有玩家加入！");
-
             const patterns = [[100, 100, 600], [600, 100, 100], [100, 500, 100]];
-            const batchPromises = ids.map((id, index) => 
-                updateDoc(doc(db, appCollection, id), { 
-                    pattern: patterns[index % patterns.length],
-                    timestamp: Date.now() 
-                })
-            );
-            await Promise.all(batchPromises);
-            updateStatus("SYSTEM: CODES_DISTRIBUTED", "text-emerald-400");
-        } catch (e) {
-            updateStatus(`ERROR: ${e.code}`, "text-red-500");
-        }
+            await Promise.all(ids.map((id, index) => 
+                updateDoc(doc(db, appCollection, id), { pattern: patterns[index % patterns.length], timestamp: Date.now() })
+            ));
+            updateStatus("SUCCESS: CODES_SENT", "text-emerald-400");
+        } catch (e) { updateStatus(`ERROR: ${e.code}`, "text-red-500"); }
     };
 
     window.triggerVibration = () => {
-        if (vibrationPattern.length > 0 && navigator.vibrate) {
-            navigator.vibrate(vibrationPattern);
-        }
-        const btn = document.getElementById('vibrate-btn');
-        btn.classList.add('bg-sky-400/40');
-        setTimeout(() => btn.classList.remove('bg-sky-400/40'), 400);
+        if (vibrationPattern.length > 0 && navigator.vibrate) navigator.vibrate(vibrationPattern);
     };
 
     function startRadarAnimation() {
@@ -207,7 +153,6 @@
         }
         draw();
     }
-
     init();
 </script>
 
