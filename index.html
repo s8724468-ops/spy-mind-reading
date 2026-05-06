@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>臥底讀心術 - 終極診斷版</title>
+    <title>臥底讀心術 - 終極診斷版 v2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -45,7 +45,8 @@
                     <i class="fa-solid fa-rotate-right"></i>
                 </button>
             </div>
-            <p id="status-text" class="text-2xl font-mono text-yellow-500 tracking-tighter italic">SYSTEM: INITIALIZING...</p>
+            <!-- 重點：這裡的字串已經改掉了，如果還看到舊的，就是快取問題 -->
+            <p id="status-text" class="text-2xl font-mono text-yellow-500 tracking-tighter italic">DIAGNOSTIC_INIT: READY...</p>
         </div>
     </div>
 
@@ -68,7 +69,7 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 正確的 Config，完全對照 image_9407df.png
+        // 完全對照 image_9407df.png
         const firebaseConfig = {
             apiKey: "AIzaSyAoHd1FJze2LfNPTP0f2an_yTwSMaKiuP4",
             authDomain: "spy-mind-reading.firebaseapp.com",
@@ -91,14 +92,14 @@
             startRadarAnimation();
 
             try {
-                updateStatus("SYSTEM: AUTHENTICATING...", "text-blue-400");
+                updateStatus("SYSTEM: AUTH_START...", "text-blue-400");
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
                 
                 const userCredential = await signInAnonymously(auth);
                 currentUser = userCredential.user;
-                updateStatus("SERVER_STATUS: ONLINE", "text-emerald-400");
+                updateStatus("SERVER_STATUS: ONLINE (v2.0.1)", "text-emerald-400");
                 
                 if (isHost) {
                     onSnapshot(collection(db, appCollection), (snap) => {
@@ -108,9 +109,11 @@
                     setupPlayerLogic();
                 }
             } catch (error) {
-                // 核心關鍵：顯示具體錯誤代碼到螢幕上！
-                updateStatus(`DIAGNOSTIC_ERROR: ${error.code || error.message}`, "text-red-500");
-                console.error(error);
+                // 此處不再有 generic 字串，直接顯示報錯代碼
+                const errorCode = error.code || "unknown_error";
+                const errorMsg = error.message || "";
+                updateStatus(`FATAL_DIAGNOSTIC: ${errorCode}`, "text-red-500");
+                console.error("Firebase Init Error:", error);
             }
         }
 
@@ -139,7 +142,7 @@
                     }
                 });
             } catch (e) {
-                updateStatus(`DB_ERROR: ${e.code}`, "text-red-500");
+                updateStatus(`FATAL_DIAGNOSTIC: db_error_${e.code}`, "text-red-500");
             }
         }
 
@@ -153,7 +156,7 @@
                     updateDoc(doc(db, appCollection, id), { pattern: patterns[index % patterns.length], timestamp: Date.now() })
                 ));
                 updateStatus("SUCCESS: CODES_SENT", "text-emerald-400");
-            } catch (e) { updateStatus(`ACTION_ERROR: ${e.code}`, "text-red-500"); }
+            } catch (e) { updateStatus(`FATAL_DIAGNOSTIC: action_error_${e.code}`, "text-red-500"); }
         };
 
         window.triggerVibration = () => {
@@ -180,7 +183,7 @@
             }
             draw();
         }
-        init();
+        window.onload = init;
     </script>
 </body>
 </html>
