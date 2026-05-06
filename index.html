@@ -9,32 +9,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
-        body {
-            background-color: #020617;
-            color: #f8fafc;
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            overflow: hidden;
-            height: 100vh;
-        }
+        body { background-color: #020617; color: #f8fafc; font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
         .tech-font { font-family: 'Orbitron', sans-serif; }
         canvas { display: block; position: absolute; inset: 0; z-index: 0; opacity: 0.4; }
-        .glass-top {
-            background: rgba(15, 23, 42, 0.4);
-            backdrop-filter: blur(8px);
-            border-bottom: 2px solid rgba(56, 189, 248, 0.2);
-        }
-        .glass-bottom {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(20px);
-            border-top: 2px solid rgba(56, 189, 248, 0.3);
-        }
-        /* QR Code 容器發光效果 */
-        #qrcode {
-            box-shadow: 0 0 80px rgba(56, 189, 248, 0.3);
-            border: 12px solid white;
-            border-radius: 2rem;
-        }
+        .glass-top { background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(8px); border-bottom: 2px solid rgba(56, 189, 248, 0.2); }
+        .glass-bottom { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); border-top: 2px solid rgba(56, 189, 248, 0.3); }
+        #qrcode { box-shadow: 0 0 80px rgba(56, 189, 248, 0.3); border: 12px solid white; border-radius: 2rem; }
         #qrcode img { margin: auto; border-radius: 1rem; }
     </style>
 </head>
@@ -44,62 +24,46 @@
 
     <!-- iPad 主控端 (Host) -->
     <div id="host-view" class="relative z-10 flex flex-col h-screen w-full hidden">
-        
-        <!-- 上部 2/3：QR Code 掃描區 -->
         <div class="h-2/3 flex flex-col items-center justify-center glass-top p-12">
             <h1 class="text-7xl font-black tech-font text-sky-400 mb-10 tracking-widest italic">SPY_CODE</h1>
-            
             <div id="qrcode-container" class="bg-white p-4 rounded-[2.5rem] transition-transform duration-500 hover:scale-105">
                 <div id="qrcode"></div>
             </div>
-            
             <p class="text-4xl text-slate-300 mt-12 font-bold tracking-wider">
                 <i class="fa-solid fa-qrcode mr-4"></i>掃描加入秘密行動
             </p>
         </div>
-
-        <!-- 下部 1/3：操作控制區 -->
         <div class="h-1/3 flex flex-col items-center justify-center glass-bottom px-20 gap-8">
-            <div id="player-count" class="text-6xl font-black text-emerald-400 tech-font">
-                AGENT_ONLINE: 0
-            </div>
-
+            <div id="player-count" class="text-6xl font-black text-emerald-400 tech-font">AGENT_ONLINE: --</div>
             <div class="flex gap-10 w-full max-w-6xl">
-                <button onclick="startGame()" class="flex-[3] py-12 bg-sky-600 hover:bg-sky-500 rounded-[3rem] font-black text-6xl text-white transition-all active:scale-95 shadow-[0_0_50px_rgba(2,132,199,0.5)] border-b-8 border-sky-800">
-                    發布代碼
-                </button>
+                <button onclick="startGame()" class="flex-[3] py-12 bg-sky-600 hover:bg-sky-500 rounded-[3rem] font-black text-6xl text-white transition-all active:scale-95 shadow-[0_0_50px_rgba(2,132,199,0.5)] border-b-8 border-sky-800">發布代碼</button>
                 <button onclick="location.reload()" class="flex-[1] py-12 bg-slate-800 hover:bg-slate-700 rounded-[3rem] font-black text-5xl transition-all active:scale-95 border-b-8 border-slate-900">
                     <i class="fa-solid fa-rotate-right"></i>
-                </div>
+                </button>
             </div>
-            <p id="status-text" class="text-2xl font-mono text-slate-500 tracking-tighter">SERVER_STATUS: ENCRYPTED_CHANNEL_READY</p>
+            <p id="status-text" class="text-2xl font-mono text-slate-500 tracking-tighter">SERVER_STATUS: INITIALIZING...</p>
         </div>
     </div>
 
-    <!-- 手機玩家端 (Player) - 保持簡約，但增加按鈕尺寸 -->
+    <!-- 手機玩家端 (Player) -->
     <div id="player-view" class="relative z-10 flex flex-col items-center justify-between h-screen w-full p-10 hidden">
         <div class="text-center pt-20">
             <h2 class="text-5xl font-black text-sky-400 tech-font tracking-widest uppercase">Secret Terminal</h2>
             <p id="vibration-hint" class="text-3xl text-slate-400 mt-8">等待指揮官發布代碼...</p>
         </div>
-
         <button id="vibrate-btn" disabled onclick="triggerVibration()" 
             class="w-[500px] h-[500px] max-w-[80vw] max-h-[40vh] rounded-full border-[15px] border-sky-500/20 bg-sky-900/10 flex flex-col items-center justify-center gap-10 transition-all active:scale-90 disabled:opacity-20 shadow-[0_0_100px_rgba(56,189,248,0.1)]">
             <i class="fa-solid fa-fingerprint text-[180px] text-sky-400"></i>
             <span class="text-4xl font-black text-sky-300 tech-font uppercase">Press to Sense</span>
         </button>
-
-        <div class="text-center pb-20">
-            <p class="text-2xl text-slate-500 italic font-bold">保持沈默，尋找你的夥伴</p>
-        </div>
+        <div class="text-center pb-20"><p class="text-2xl text-slate-500 italic font-bold">保持沈默，尋找你的夥伴</p></div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase 配置 (請更換為你自己的配置)
         const firebaseConfig = {
             apiKey: "AIzaSyAoHd1FJze2LfNPTP0f2an_yTwSMaKiuP4",
             authDomain: "spy-mind-reading.firebaseapp.com",
@@ -118,49 +82,57 @@
         let currentUser = null;
         let vibrationPattern = [];
 
-        window.onload = async () => {
-            await signInAnonymously(auth);
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    currentUser = user;
-                    init();
-                }
-            });
-            startRadarAnimation();
-        };
-
-        function init() {
+        // 立即顯示畫面，不等待連線
+        window.onload = () => {
             const params = new URLSearchParams(window.location.search);
             const isHost = params.get('mode') === 'host' || window.innerWidth > 768;
 
             if (isHost) {
-                setupHost();
+                document.getElementById('host-view').classList.remove('hidden');
+                setupHostUI();
             } else {
-                setupPlayer();
+                document.getElementById('player-view').classList.remove('hidden');
+            }
+            
+            startRadarAnimation();
+            startFirebase();
+        };
+
+        async function startFirebase() {
+            try {
+                const userCredential = await signInAnonymously(auth);
+                currentUser = userCredential.user;
+                document.getElementById('status-text').innerText = "SERVER_STATUS: ENCRYPTED_CHANNEL_READY";
+                
+                const params = new URLSearchParams(window.location.search);
+                const isHost = params.get('mode') === 'host' || window.innerWidth > 768;
+                
+                if (isHost) {
+                    const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
+                    onSnapshot(playersRef, (snap) => {
+                        document.getElementById('player-count').innerText = `AGENT_ONLINE: ${snap.size}`;
+                    });
+                } else {
+                    setupPlayerLogic();
+                }
+            } catch (error) {
+                console.error(error);
+                document.getElementById('status-text').innerText = "ERROR: FIREBASE_CONNECTION_FAILED";
+                document.getElementById('status-text').style.color = "#ef4444";
             }
         }
 
-        function setupHost() {
-            document.getElementById('host-view').classList.remove('hidden');
+        function setupHostUI() {
             const playerUrl = `${window.location.origin}${window.location.pathname}?mode=player`;
-            
-            // iPad 專用巨大 QR Code：設定為 450px
             new QRCode(document.getElementById("qrcode"), {
                 text: playerUrl,
                 width: 450,
                 height: 450,
                 colorDark: "#020617"
             });
-
-            // 監聽玩家
-            const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
-            onSnapshot(playersRef, (snap) => {
-                document.getElementById('player-count').innerText = `AGENT_ONLINE: ${snap.size}`;
-            });
         }
 
-        async function setupPlayer() {
-            document.getElementById('player-view').classList.remove('hidden');
+        async function setupPlayerLogic() {
             const playerDoc = doc(db, 'artifacts', appId, 'public', 'data', 'players', currentUser.uid);
             await setDoc(playerDoc, { uid: currentUser.uid, pattern: [], timestamp: Date.now() });
 
@@ -177,10 +149,10 @@
 
         window.startGame = async () => {
             const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
+            // 注意：一次性獲取快照
             onSnapshot(playersRef, async (snap) => {
                 const ids = snap.docs.map(d => d.id);
                 const patterns = [[100, 100, 600], [600, 100, 100], [100, 500, 100]];
-                
                 for (let i = 0; i < ids.length; i++) {
                     const pDoc = doc(db, 'artifacts', appId, 'public', 'data', 'players', ids[i]);
                     await updateDoc(pDoc, { pattern: patterns[i % patterns.length] });
@@ -203,8 +175,7 @@
             const ctx = canvas.getContext('2d');
             let rotation = 0;
             function draw() {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
+                canvas.width = window.innerWidth; canvas.height = window.innerHeight;
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 const cx = canvas.width / 2; const cy = canvas.height / 2;
                 const r = Math.max(canvas.width, canvas.height);
