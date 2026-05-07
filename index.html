@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPY_CODE 讀心術實戰版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Noto+Sans+TC:wght@400;900&display=swap');
+        
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            font-family: 'Noto Sans TC', sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .tech-font { font-family: 'Orbitron', sans-serif; }
+
+        /* 移除邊框與線條，整合一體化背景 */
+        .glass-container { 
+            background: linear-gradient(to bottom, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.9) 100%);
+            backdrop-filter: blur(15px);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        #qrcode { 
+            box-shadow: 0 0 80px rgba(56, 189, 248, 0.3); 
+            border: 12px solid white; 
+            border-radius: 2rem; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+        }
+        
+        #qrcode img { 
+            margin: auto; 
+            border-radius: 1rem; 
+            max-width: 100%; 
+            height: auto; 
+        }
+
+        .view-section { display: none; }
+        .active-view { display: flex !important; }
+        
+        .version-tag { animation: blink 1s infinite; color: #f59e0b; }
+        @keyframes blink { 50% { opacity: 0.3; } }
+
+        #radarCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* 按鈕觸控優化 */
+        .action-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .action-btn:active {
+            transform: scale(0.95);
+            filter: brightness(1.2);
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="radarCanvas"></canvas>
+
+<!-- 主控端：iPad 展示用 -->
+<div id="host-view" class="view-section relative z-10 glass-container">
+    <!-- 上方區域：QR Code -->
+    <div class="flex-[2] flex flex-col items-center justify-center p-8 space-y-6">
+        <h1 class="text-7xl font-black tech-font text-sky-400 tracking-widest italic text-center">
+            SPY_CODE <span class="text-2xl version-tag">V2.1_LIVE</span>
+        </h1>
+        <div id="qrcode-container" class="bg-white p-4 rounded-[2.5rem] shadow-2xl">
+            <div id="qrcode"></div>
+        </div>
+        <p class="text-4xl text-slate-300 font-bold tracking-wider">
+            <i class="fa-solid fa-qrcode mr-4 text-sky-400"></i>掃描加入秘密行動
+        </p>
+    </div>
+
+    <!-- 下方區域：操作區域 (移除分隔線，優化間距) -->
+    <div class="flex-[1] flex flex-col items-center justify-start px-20 pt-4 pb-12 gap-8">
+        <div id="player-count" class="text-6xl font-black text-emerald-400 tech-font drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]">
+            AGENT_ONLINE: 0
+        </div>
+        
+        <div class="flex gap-8 w-full max-w-6xl">
+            <button id="start-btn" onclick="startGame()" class="action-btn flex-[3] py-12 bg-sky-600 rounded-[3rem] font-black text-6xl text-white shadow-[0_0_50px_rgba(2,132,199,0.4)]">
+                發布代碼
+            </button>
+            <button onclick="location.reload()" class="action-btn flex-[1] py-12 bg-slate-800 rounded-[3rem] font-black text-5xl text-slate-300">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+        </div>
+        
+        <!-- 狀態列：確保在最底部且清晰 -->
+        <p id="status-text" class="text-3xl font-mono text-yellow-500 tracking-tighter italic mt-4 bg-black/20 px-6 py-2 rounded-full">
+            SYSTEM_INIT: READY...
+        </p>
+    </div>
+</div>
+
+<!-- 玩家端：手機用 -->
+<div id="player-view" class="view-section relative z-10 flex-col items-center justify-between h-screen w-full p-10 glass-container">
+    <div class="text-center pt-16">
+        <h2 class="text-5xl font-black text-sky-400 tech-font tracking-widest uppercase">Secret Terminal</h2>
+        <p id="vibration-hint" class="text-3xl text-slate-400 mt-8">等待指揮官發布代碼...</p>
+    </div>
+    
+    <button id="vibrate-btn" disabled onclick="triggerVibration()" class="action-btn w-[500px] h-[500px] max-w-[80vw] max-h-[40vh] rounded-full border-[15px] border-sky-500/20 bg-sky-900/10 flex flex-col items-center justify-center gap-10 shadow-[0_0_100px_rgba(56,189,248,0.1)]">
+        <i class="fa-solid fa-fingerprint text-[180px] text-sky-400"></i>
+        <span class="text-4xl font-black text-sky-300 tech-font uppercase">Press to Sense</span>
+    </button>
+    
+    <div class="text-center pb-16">
+        <p class="text-2xl text-slate-500 italic font-bold">保持沈默，尋找你的夥伴</p>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // 注意：請確保此金鑰在 Google Cloud 是「無限制」狀態
+    const firebaseConfig = {
+        apiKey: "AIzaSyAoHd1FJze2LfNPTp0f2an_yTwSMaKiuP4", 
+        authDomain: "spy-mind-reading.firebaseapp.com",
+        projectId: "spy-mind-reading",
+        storageBucket: "spy-mind-reading.firebasestorage.app",
+        messagingSenderId: "836432547281",
+        appId: "1:836432547281:web:154e9cbc061e6ff82964f0"
+    };
+
+    const appCollection = 'players'; 
+    let db, auth, currentUser, vibrationPattern = [];
+
+    async function init() {
+        const params = new URLSearchParams(window.location.search);
+        const isHost = params.get('mode') === 'host' || (window.innerWidth > 768 && !params.get('mode'));
+
+        document.getElementById(isHost ? 'host-view' : 'player-view').classList.add('active-view');
+        if (isHost) setupHostUI();
+        startRadarAnimation();
+
+        try {
+            updateStatus("SYSTEM: CONNECTING...", "text-blue-400");
+            
+            // 強制初始化
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            
+            const userCredential = await signInAnonymously(auth);
+            currentUser = userCredential.user;
+            
+            updateStatus("SERVER_STATUS: ONLINE", "text-emerald-400");
+            
+            if (isHost) {
+                onSnapshot(collection(db, appCollection), (snap) => {
+                    document.getElementById('player-count').innerText = `AGENT_ONLINE: ${snap.size}`;
+                }, (err) => {
+                    updateStatus(`DATABASE_ERR: ${err.code}`, "text-red-400");
+                });
+            } else {
+                setupPlayerLogic();
+            }
+        } catch (error) {
+            console.error("Firebase Init Error:", error);
+            updateStatus(`DIAGNOSTIC: ${error.code}`, "text-red-500");
+            // 如果還是無效，提供更細節的指引
+            if (error.code === 'auth/api-key-not-valid') {
+                document.getElementById('status-text').innerHTML = "KEY_REJECTED: 請檢查 Google Cloud 權限限制";
+            }
+        }
+    }
+
+    function updateStatus(text, colorClass) {
+        const el = document.getElementById('status-text');
+        if (el) { 
+            el.innerText = text; 
+            el.className = `text-3xl font-mono tracking-tighter italic mt-4 bg-black/20 px-6 py-2 rounded-full ${colorClass}`; 
+        }
+    }
+
+    function setupHostUI() {
+        const playerUrl = `${window.location.origin}${window.location.pathname}?mode=player`;
+        const qrcodeEl = document.getElementById("qrcode");
+        qrcodeEl.innerHTML = ""; 
+        new QRCode(qrcodeEl, { text: playerUrl, width: 450, height: 450, colorDark: "#020617" });
+    }
+
+    async function setupPlayerLogic() {
+        try {
+            const playerDoc = doc(db, appCollection, currentUser.uid);
+            await setDoc(playerDoc, { uid: currentUser.uid, pattern: [], timestamp: Date.now() }, { merge: true });
+            onSnapshot(playerDoc, (snap) => {
+                const data = snap.data();
+                if (data?.pattern?.length > 0) {
+                    vibrationPattern = data.pattern;
+                    document.getElementById('vibration-hint').innerText = "代碼接收成功！";
+                    const btn = document.getElementById('vibrate-btn');
+                    btn.disabled = false;
+                    btn.classList.add('animate-pulse');
+                }
+            });
+        } catch (e) {
+            updateStatus(`PLAYER_ERR: ${e.code}`, "text-red-500");
+        }
+    }
+
+    window.startGame = async () => {
+        updateStatus("SYSTEM: DISTRIBUTING...", "text-sky-400");
+        try {
+            const snap = await getDocs(collection(db, appCollection));
+            const ids = snap.docs.map(d => d.id);
+            if (ids.length === 0) {
+                updateStatus("ERROR: NO_AGENTS_FOUND", "text-red-400");
+                return;
+            }
+            const patterns = [[100, 100, 600], [600, 100, 100], [100, 500, 100]];
+            await Promise.all(ids.map((id, index) => 
+                updateDoc(doc(db, appCollection, id), { pattern: patterns[index % patterns.length], timestamp: Date.now() })
+            ));
+            updateStatus("SUCCESS: CODES_SENT", "text-emerald-400");
+        } catch (e) { 
+            updateStatus(`ACTION_ERR: ${e.code}`, "text-red-500"); 
+        }
+    };
+
+    window.triggerVibration = () => {
+        if (vibrationPattern.length > 0 && navigator.vibrate) navigator.vibrate(vibrationPattern);
+        // 視覺反饋
+        const btn = document.getElementById('vibrate-btn');
+        btn.classList.add('bg-sky-400/20');
+        setTimeout(() => btn.classList.remove('bg-sky-400/20'), 200);
+    };
+
+    function startRadarAnimation() {
+        const canvas = document.getElementById('radarCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let rotation = 0;
+        function draw() {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const cx = canvas.width / 2; const cy = canvas.height / 2;
+            const r = Math.max(canvas.width, canvas.height);
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(rotation);
+            const grad = ctx.createRadialGradient(0,0,0,0,0,r/2);
+            grad.addColorStop(0, 'rgba(56, 189, 248, 0)');
+            grad.addColorStop(1, 'rgba(56, 189, 248, 0.1)');
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,r/2,0, Math.PI*0.1); ctx.fill();
+            ctx.restore();
+            rotation += 0.01; requestAnimationFrame(draw);
+        }
+        draw();
+    }
+    window.onload = init;
+</script>
+</body>
+</html>
+
+
+
