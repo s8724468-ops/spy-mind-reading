@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPY_CODE 讀心術實戰版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Noto+Sans+TC:wght@400;900&display=swap');
+        
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            font-family: 'Noto Sans TC', sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .tech-font { font-family: 'Orbitron', sans-serif; }
+
+        .glass-container { 
+            background: linear-gradient(to bottom, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.9) 100%);
+            backdrop-filter: blur(15px);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        #qrcode { 
+            box-shadow: 0 0 80px rgba(56, 189, 248, 0.3); 
+            border: 12px solid white; 
+            border-radius: 2rem; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+        }
+        
+        #qrcode img { 
+            margin: auto; 
+            border-radius: 1rem; 
+            max-width: 100%; 
+            height: auto; 
+        }
+
+        .view-section { display: none; }
+        .active-view { display: flex !important; }
+        
+        .version-tag { animation: blink 1s infinite; color: #f59e0b; }
+        @keyframes blink { 50% { opacity: 0.3; } }
+
+        #radarCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .action-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        .action-btn:active {
+            transform: scale(0.95);
+            filter: brightness(1.2);
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="radarCanvas"></canvas>
+
+<div id="host-view" class="view-section relative z-10 glass-container">
+    <div class="flex-[2] flex flex-col items-center justify-center p-8 space-y-6">
+        <h1 class="text-7xl font-black tech-font text-sky-400 tracking-widest italic text-center">
+            SPY_CODE <span class="text-2xl version-tag">V2.4_FIXED</span>
+        </h1>
+        <div id="qrcode-container" class="bg-white p-4 rounded-[2.5rem] shadow-2xl">
+            <div id="qrcode"></div>
+        </div>
+        <p class="text-4xl text-slate-300 font-bold tracking-wider">
+            <i class="fa-solid fa-qrcode mr-4 text-sky-400"></i>掃描加入秘密行動
+        </p>
+    </div>
+
+    <div class="flex-[1] flex flex-col items-center justify-start px-20 pt-4 pb-12 gap-8">
+        <div id="player-count" class="text-6xl font-black text-emerald-400 tech-font drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]">
+            AGENT_ONLINE: 0
+        </div>
+        
+        <div class="flex gap-8 w-full max-w-6xl">
+            <button id="start-btn" onclick="startGame()" class="action-btn flex-[3] py-12 bg-sky-600 rounded-[3rem] font-black text-6xl text-white shadow-[0_0_50px_rgba(2,132,199,0.4)]">
+                發布代碼
+            </button>
+            <button onclick="clearAllData()" class="action-btn flex-[1] py-12 bg-rose-900/50 border-4 border-rose-500 rounded-[3rem] font-black text-3xl text-rose-200">
+                <i class="fa-solid fa-trash-can mr-2"></i>清空
+            </button>
+            <button onclick="location.reload()" class="action-btn flex-[1] py-12 bg-slate-800 rounded-[3rem] font-black text-5xl text-slate-300">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+        </div>
+        
+        <p id="status-text" class="text-3xl font-mono text-yellow-500 tracking-tighter italic mt-4 bg-black/20 px-6 py-2 rounded-full">
+            SYSTEM_INIT: READY...
+        </p>
+    </div>
+</div>
+
+<div id="player-view" class="view-section relative z-10 flex-col items-center justify-between h-screen w-full p-10 glass-container">
+    <div class="text-center pt-16">
+        <h2 class="text-5xl font-black text-sky-400 tech-font tracking-widest uppercase">Secret Terminal</h2>
+        <p id="vibration-hint" class="text-3xl text-slate-400 mt-8">等待指揮官發布代碼...</p>
+    </div>
+    
+    <button id="vibrate-btn" disabled onclick="triggerVibration()" class="action-btn w-[500px] h-[500px] max-w-[80vw] max-h-[40vh] rounded-full border-[15px] border-sky-500/20 bg-sky-900/10 flex flex-col items-center justify-center gap-10 shadow-[0_0_100px_rgba(56,189,248,0.1)]">
+        <i class="fa-solid fa-fingerprint text-[180px] text-sky-400"></i>
+        <span class="text-4xl font-black text-sky-300 tech-font uppercase">Press to Sense</span>
+    </button>
+    
+    <div class="text-center pb-16">
+        <p class="text-2xl text-slate-500 italic font-bold">保持沈默，尋找你的夥伴</p>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp, deleteApp, getApps } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, getDocs, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // 注意：請確保這裡的 Config 與你的 Firebase 專案一致
+    const firebaseConfig = {
+        apiKey: "AIzaSyAoHd1FJze2LfNPTp0f2an_yTwSMaKiuP4", 
+        authDomain: "spy-mind-reading.firebaseapp.com",
+        projectId: "spy-mind-reading",
+        storageBucket: "spy-mind-reading.firebasestorage.app",
+        messagingSenderId: "836432547281",
+        appId: "1:836432547281:web:154e9cbc061e6ff82964f0"
+    };
+
+    const appCollection = 'players'; 
+    let db, auth, currentUser, vibrationPattern = [];
+    let isHost = false;
+
+    function setupHostUI() {
+        const currentUrl = window.location.href.split('?')[0];
+        const playerUrl = `${currentUrl}?mode=player`;
+        
+        // 清除舊的內容確保不重疊
+        document.getElementById("qrcode").innerHTML = "";
+        
+        new QRCode(document.getElementById("qrcode"), {
+            text: playerUrl,
+            width: 400,
+            height: 400,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+        console.log("QR Code Generated for:", playerUrl);
+    }
+
+    function updateStatus(msg, colorClass) {
+        const statusEl = document.getElementById('status-text');
+        if (statusEl) {
+            statusEl.innerText = msg;
+            statusEl.className = `text-3xl font-mono tracking-tighter italic mt-4 bg-black/20 px-6 py-2 rounded-full ${colorClass}`;
+        }
+    }
+
+    async function init() {
+        const params = new URLSearchParams(window.location.search);
+        isHost = params.get('mode') === 'host' || (window.innerWidth > 768 && !params.get('mode'));
+
+        document.getElementById(isHost ? 'host-view' : 'player-view').classList.add('active-view');
+        if (isHost) setupHostUI();
+        startRadarAnimation();
+
+        try {
+            updateStatus("SYSTEM: CONNECTING...", "text-blue-400");
+            
+            // 清理舊連線防止快取干擾
+            if (getApps().length) {
+                await Promise.all(getApps().map(app => deleteApp(app)));
+            }
+
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            
+            const userCredential = await signInAnonymously(auth);
+            currentUser = userCredential.user;
+            
+            updateStatus("SERVER_STATUS: ONLINE", "text-emerald-400");
+            
+            if (isHost) {
+                const hostDocRef = doc(db, appCollection, currentUser.uid);
+                await setDoc(hostDocRef, { 
+                    isPlayer: false, 
+                    lastActive: Date.now() 
+                }, { merge: true });
+                
+                // 嚴格監聽：只統計 isPlayer 為 true 且 10分鐘內有活動的特務
+                const q = query(
+                    collection(db, appCollection), 
+                    where("isPlayer", "==", true)
+                );
+                
+                onSnapshot(q, (snap) => {
+                    const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+                    const activePlayers = snap.docs.filter(doc => (doc.data().lastActive || 0) > tenMinutesAgo);
+                    document.getElementById('player-count').innerText = `AGENT_ONLINE: ${activePlayers.length}`;
+                    
+                    if (activePlayers.length > 0) {
+                        updateStatus(`SYSTEM: ${activePlayers.length} AGENTS READY`, "text-emerald-400");
+                    }
+                });
+            } else {
+                setupPlayerLogic();
+            }
+        } catch (error) {
+            console.error("Firebase Init Error:", error);
+            updateStatus(`DIAGNOSTIC: ${error.code}`, "text-red-500");
+        }
+    }
+
+    window.clearAllData = async () => {
+        if(!confirm("確定要清空所有特務資料嗎？這將重置目前所有連線。")) return;
+        
+        updateStatus("SYSTEM: WIPING DATABASE...", "text-rose-400");
+        try {
+            const snap = await getDocs(collection(db, appCollection));
+            const deletePromises = snap.docs.map(d => deleteDoc(doc(db, appCollection, d.id)));
+            await Promise.all(deletePromises);
+            updateStatus("DATABASE: CLEANED", "text-emerald-400");
+            setTimeout(() => location.reload(), 1000);
+        } catch (e) {
+            updateStatus("ERROR: WIPE_FAILED", "text-red-500");
+        }
+    };
+
+    async function setupPlayerLogic() {
+        const playerDoc = doc(db, appCollection, currentUser.uid);
+        await setDoc(playerDoc, { 
+            uid: currentUser.uid, 
+            isPlayer: true,
+            pattern: [], 
+            lastActive: Date.now() 
+        }, { merge: true });
+        
+        // 每分鐘更新一次活動狀態，確保在計數器中存活
+        setInterval(async () => {
+            await updateDoc(playerDoc, { lastActive: Date.now() });
+        }, 30000);
+
+        onSnapshot(playerDoc, (snap) => {
+            const data = snap.data();
+            if (data?.pattern?.length > 0) {
+                vibrationPattern = data.pattern;
+                document.getElementById('vibration-hint').innerText = "代碼接收成功！";
+                const btn = document.getElementById('vibrate-btn');
+                btn.disabled = false;
+                btn.classList.add('animate-pulse');
+            }
+        });
+    }
+
+    window.startGame = async () => {
+        updateStatus("SYSTEM: DISTRIBUTING...", "text-sky-400");
+        try {
+            const q = query(collection(db, appCollection), where("isPlayer", "==", true));
+            const snap = await getDocs(q);
+            const ids = snap.docs.map(d => d.id);
+            
+            if (ids.length === 0) {
+                updateStatus("ERROR: NO_AGENTS_FOUND", "text-red-400");
+                return;
+            }
+            
+            const patterns = [[100, 100, 600], [600, 100, 100], [100, 500, 100]];
+            await Promise.all(ids.map((id, index) => 
+                updateDoc(doc(db, appCollection, id), { 
+                    pattern: patterns[index % patterns.length], 
+                    timestamp: Date.now() 
+                })
+            ));
+            updateStatus("SUCCESS: CODES_SENT", "text-emerald-400");
+        } catch (e) { 
+            updateStatus(`ACTION_ERR: ${e.code}`, "text-red-500"); 
+        }
+    };
+
+    window.triggerVibration = () => {
+        if (vibrationPattern.length > 0 && navigator.vibrate) navigator.vibrate(vibrationPattern);
+        const btn = document.getElementById('vibrate-btn');
+        btn.classList.add('bg-sky-400/20');
+        setTimeout(() => btn.classList.remove('bg-sky-400/20'), 200);
+    };
+
+    function startRadarAnimation() {
+        const canvas = document.getElementById('radarCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let rotation = 0;
+        function draw() {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const cx = canvas.width / 2; const cy = canvas.height / 2;
+            const r = Math.max(canvas.width, canvas.height);
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(rotation);
+            const grad = ctx.createRadialGradient(0,0,0,0,0,r/2);
+            grad.addColorStop(0, 'rgba(56, 189, 248, 0)');
+            grad.addColorStop(1, 'rgba(56, 189, 248, 0.1)');
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,r/2,0, Math.PI*0.1); ctx.fill();
+            ctx.restore();
+            rotation += 0.01; requestAnimationFrame(draw);
+        }
+        draw();
+    }
+    window.onload = init;
+</script>
+</body>
+</html>
