@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SPY_CODE 讀心術實戰版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Noto+Sans+TC:wght@400;900&display=swap');
+        
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            font-family: 'Noto Sans TC', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            touch-action: none;
+            transition: background-color 0.05s ease; /* 為了閃爍效果加入平滑過渡 */
+        }
+
+        .tech-font { font-family: 'Orbitron', sans-serif; }
+
+        .glass-container { 
+            background: linear-gradient(to bottom, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.9) 100%);
+            backdrop-filter: blur(15px);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        #qrcode { 
+            box-shadow: 0 0 80px rgba(56, 189, 248, 0.3); 
+            border: 12px solid white; 
+            border-radius: 2rem; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+        }
+        
+        #qrcode img { 
+            margin: auto; 
+            border-radius: 1rem; 
+            max-width: 100%; 
+            height: auto; 
+        }
+
+        .view-section { display: none; }
+        .active-view { display: flex !important; }
+        
+        .version-tag { animation: blink 1s infinite; color: #f59e0b; }
+        @keyframes blink { 50% { opacity: 0.3; } }
+
+        #radarCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .action-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        .action-btn:active {
+            transform: scale(0.95);
+            filter: brightness(1.2);
+        }
+
+        /* 閃爍模式的特殊樣式 */
+        .flashing {
+            background-color: #f8fafc !important;
+            color: #020617 !important;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="radarCanvas"></canvas>
+
+<!-- 主控端：iPad 展示用 -->
+<div id="host-view" class="view-section relative z-10 glass-container">
+    <div class="flex-[2] flex flex-col items-center justify-center p-8 space-y-6">
+        <h1 class="text-7xl font-black tech-font text-sky-400 tracking-widest italic text-center">
+            SPY_CODE <span class="text-2xl version-tag">V2.5_FLASH</span>
+        </h1>
+        <div id="qrcode-container" class="bg-white p-4 rounded-[2.5rem] shadow-2xl">
+            <div id="qrcode"></div>
+        </div>
+        <p class="text-4xl text-slate-300 font-bold tracking-wider">
+            <i class="fa-solid fa-qrcode mr-4 text-sky-400"></i>掃描加入秘密行動
+        </p>
+    </div>
+
+    <div class="flex-[1] flex flex-col items-center justify-start px-20 pt-4 pb-12 gap-8">
+        <div id="player-count" class="text-6xl font-black text-emerald-400 tech-font drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]">
+            AGENT_ONLINE: 0
+        </div>
+        
+        <div class="flex gap-8 w-full max-w-6xl">
+            <button id="start-btn" onclick="startGame()" class="action-btn flex-[3] py-12 bg-sky-600 rounded-[3rem] font-black text-6xl text-white shadow-[0_0_50px_rgba(2,132,199,0.4)]">
+                發布代碼
+            </button>
+            <button onclick="clearData()" class="action-btn flex-[1] py-12 bg-red-900/50 hover:bg-red-800 rounded-[3rem] font-black text-5xl text-red-200">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+            <button onclick="location.reload()" class="action-btn flex-[1] py-12 bg-slate-800 rounded-[3rem] font-black text-5xl text-slate-300">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+        </div>
+        
+        <p id="status-text" class="text-3xl font-mono text-yellow-500 tracking-tighter italic mt-4 bg-black/20 px-6 py-2 rounded-full">
+            SYSTEM_INIT: READY...
+        </p>
+    </div>
+</div>
+
+<!-- 玩家端：手機用 -->
+<div id="player-view" class="view-section relative z-10 flex-col items-center justify-between h-screen w-full p-10 glass-container">
+    <div class="text-center pt-16">
+        <h2 class="text-5xl font-black text-sky-400 tech-font tracking-widest uppercase">Secret Terminal</h2>
+        <p id="vibration-hint" class="text-3xl text-slate-400 mt-8 font-bold">等待指揮官發布代碼...</p>
+    </div>
+    
+    <button id="vibrate-btn" onclick="triggerVibration()" class="action-btn w-[500px] h-[500px] max-w-[80vw] max-h-[40vh] rounded-full border-[15px] border-sky-500/20 bg-sky-900/10 flex flex-col items-center justify-center gap-10 shadow-[0_0_100px_rgba(56,189,248,0.1)] opacity-20" disabled>
+        <i class="fa-solid fa-fingerprint text-[180px] text-sky-400"></i>
+        <span class="text-4xl font-black text-sky-300 tech-font uppercase">Press to Sense</span>
+    </button>
+    
+    <div class="text-center pb-16">
+        <p id="instruction-text" class="text-2xl text-slate-500 italic font-bold">保持沈默，尋找你的夥伴</p>
+        <p id="ios-info" class="hidden text-sky-500 text-xl mt-4 font-bold">已啟用視覺閃爍補償模式</p>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp, deleteApp, getApps } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, getDocs, deleteDoc, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAoHd1FJze2LfNPTp0f2an_yTwSMaKiuP4", 
+        authDomain: "spy-mind-reading.firebaseapp.com",
+        projectId: "spy-mind-reading",
+        storageBucket: "spy-mind-reading.firebasestorage.app",
+        messagingSenderId: "836432547281",
+        appId: "1:836432547281:web:154e9cbc061e6ff82964f0"
+    };
+
+    const appCollection = 'players'; 
+    let db, auth, currentUser, vibrationPattern = [];
+    let isHost = false;
+    let isVisualMode = false;
+
+    async function init() {
+        const params = new URLSearchParams(window.location.search);
+        isHost = params.get('mode') === 'host' || (window.innerWidth > 768 && !params.get('mode'));
+
+        document.getElementById(isHost ? 'host-view' : 'player-view').classList.add('active-view');
+        if (isHost) setupHostUI();
+        else checkDeviceCapabilities();
+
+        startRadarAnimation();
+
+        try {
+            if (getApps().length) {
+                await Promise.all(getApps().map(app => deleteApp(app)));
+            }
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            const userCredential = await signInAnonymously(auth);
+            currentUser = userCredential.user;
+            
+            if (isHost) {
+                updateStatus("SERVER: ONLINE", "text-emerald-400");
+                await deleteDoc(doc(db, appCollection, currentUser.uid));
+                const q = query(collection(db, appCollection), where("isPlayer", "==", true));
+                onSnapshot(q, (snap) => {
+                    document.getElementById('player-count').innerText = `AGENT_ONLINE: ${snap.size}`;
+                });
+            } else {
+                setupPlayerLogic();
+            }
+        } catch (error) {
+            console.error(error);
+            updateStatus(`ERR: ${error.code}`, "text-red-500");
+        }
+    }
+
+    function checkDeviceCapabilities() {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        // 如果是 iOS 或者不支援震動 API，開啟視覺模式
+        if (isIOS || !navigator.vibrate) {
+            isVisualMode = true;
+            document.getElementById('ios-info').classList.remove('hidden');
+            document.getElementById('instruction-text').innerText = "觀察螢幕閃爍頻率來尋找隊友";
+        }
+    }
+
+    function updateStatus(text, colorClass) {
+        const el = document.getElementById('status-text');
+        if (el) { 
+            el.innerText = text; 
+            el.className = `text-3xl font-mono tracking-tighter italic mt-4 bg-black/20 px-6 py-2 rounded-full ${colorClass}`; 
+        }
+    }
+
+    function setupHostUI() {
+        const playerUrl = `${window.location.origin}${window.location.pathname}?mode=player`;
+        const qrcodeEl = document.getElementById("qrcode");
+        qrcodeEl.innerHTML = ""; 
+        new QRCode(qrcodeEl, { text: playerUrl, width: 450, height: 450, colorDark: "#020617" });
+    }
+
+    async function setupPlayerLogic() {
+        const playerDoc = doc(db, appCollection, currentUser.uid);
+        await setDoc(playerDoc, { uid: currentUser.uid, isPlayer: true, pattern: [], lastActive: Date.now() }, { merge: true });
+        
+        onSnapshot(playerDoc, (snap) => {
+            const data = snap.data();
+            if (data?.pattern?.length > 0) {
+                vibrationPattern = data.pattern;
+                document.getElementById('vibration-hint').innerText = "【代碼接收成功】";
+                document.getElementById('vibration-hint').className = "text-3xl text-emerald-400 mt-8 font-black animate-bounce";
+                const btn = document.getElementById('vibrate-btn');
+                btn.disabled = false;
+                btn.classList.remove('opacity-20');
+                btn.classList.add('shadow-[0_0_100px_rgba(56,189,248,0.4)]');
+            }
+        });
+    }
+
+    // 閃爍邏輯：依照 pattern 數組切換背景顏色
+    async function flashScreen(pattern) {
+        const body = document.body;
+        for (let i = 0; i < pattern.length; i++) {
+            const duration = pattern[i];
+            if (i % 2 === 0) {
+                // 偶數索引為「震動時間」-> 變亮
+                body.classList.add('flashing');
+                await new Promise(resolve => setTimeout(resolve, duration));
+                body.classList.remove('flashing');
+            } else {
+                // 奇數索引為「間隔時間」-> 保持黑暗
+                await new Promise(resolve => setTimeout(resolve, duration));
+            }
+        }
+    }
+
+    window.triggerVibration = () => {
+        if (vibrationPattern.length === 0) return;
+
+        // 1. 執行實體震動 (Android)
+        if (navigator.vibrate) {
+            navigator.vibrate(vibrationPattern);
+        }
+
+        // 2. 執行視覺閃爍 (iOS 或 輔助)
+        flashScreen(vibrationPattern);
+
+        // 3. 按鈕回饋
+        const btn = document.getElementById('vibrate-btn');
+        btn.classList.add('bg-sky-400/50', 'scale-110');
+        setTimeout(() => btn.classList.remove('bg-sky-400/50', 'scale-110'), 200);
+    };
+
+    window.startGame = async () => {
+        updateStatus("DISTRIBUTING CODES...", "text-sky-400");
+        const q = query(collection(db, appCollection), where("isPlayer", "==", true));
+        const snap = await getDocs(q);
+        const ids = snap.docs.map(d => d.id);
+        if (ids.length === 0) { updateStatus("ERROR: NO AGENTS", "text-red-400"); return; }
+        
+        // 代碼模式：震動-停-震動 (毫秒)
+        const patterns = [[150, 150, 800], [800, 150, 150], [150, 600, 150]];
+        await Promise.all(ids.map((id, index) => 
+            updateDoc(doc(db, appCollection, id), { pattern: patterns[index % patterns.length], lastActive: Date.now() })
+        ));
+        updateStatus("SUCCESS: CODES ACTIVE", "text-emerald-400");
+    };
+
+    window.clearData = async () => {
+        if (!confirm("確定重置所有特務？")) return;
+        const snap = await getDocs(collection(db, appCollection));
+        const batch = writeBatch(db);
+        snap.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        location.reload();
+    };
+
+    function startRadarAnimation() {
+        const canvas = document.getElementById('radarCanvas');
+        const ctx = canvas.getContext('2d');
+        let rotation = 0;
+        function draw() {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            const cx = canvas.width / 2, cy = canvas.height / 2, r = Math.max(canvas.width, canvas.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(rotation);
+            const grad = ctx.createRadialGradient(0,0,0,0,0,r/2);
+            grad.addColorStop(0, 'rgba(56, 189, 248, 0)'); grad.addColorStop(1, 'rgba(56, 189, 248, 0.1)');
+            ctx.fillStyle = grad; ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,r/2,0, Math.PI*0.1); ctx.fill();
+            ctx.restore();
+            rotation += 0.01; requestAnimationFrame(draw);
+        }
+        draw();
+    }
+    window.onload = init;
+</script>
+</body>
+</html>
