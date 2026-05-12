@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SPY_CODE 亂數進階版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Noto+Sans+TC:wght@400;900&display=swap');
+        
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            font-family: 'Noto Sans TC', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            touch-action: none;
+            transition: background-color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tech-font { font-family: 'Orbitron', sans-serif; }
+        .glass-container { 
+            background: linear-gradient(to bottom, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.9) 100%);
+            backdrop-filter: blur(15px);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        #qrcode img { margin: auto; border-radius: 1rem; border: 8px solid white; }
+        .view-section { display: none; }
+        .active-view { display: flex !important; }
+        
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.4); }
+            70% { box-shadow: 0 0 0 20px rgba(56, 189, 248, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+        }
+        .pulse-btn { animation: pulse-border 2s infinite; }
+        .action-btn { transition: all 0.2s ease; cursor: pointer; }
+        .action-btn:active { transform: scale(0.95); }
+        .flashing { background-color: #ffffff !important; color: #000000 !important; transition: none; }
+        
+        /* 動態背景色類別 */
+        .reveal-bg-0 { background-color: #10b981 !important; color: white !important; }
+        .reveal-bg-1 { background-color: #8b5cf6 !important; color: white !important; }
+        .reveal-bg-2 { background-color: #f59e0b !important; color: white !important; }
+        .reveal-bg-3 { background-color: #ef4444 !important; color: white !important; }
+        .reveal-bg-4 { background-color: #06b6d4 !important; color: white !important; }
+        .reveal-bg-5 { background-color: #ec4899 !important; color: white !important; }
+    </style>
+</head>
+<body>
+
+<canvas id="radarCanvas"></canvas>
+
+<!-- 指揮官介面 (iPad/Laptop) -->
+<div id="host-view" class="view-section relative z-10 glass-container">
+    <div class="flex-[2] flex flex-col items-center justify-center p-8 space-y-6">
+        <h1 class="text-6xl font-black tech-font text-sky-400 italic">SPY_CODE</h1>
+        <div id="qrcode" class="shadow-2xl"></div>
+        <div id="player-count" class="text-4xl font-black text-emerald-400 tech-font">AGENT: 0</div>
+    </div>
+
+    <div class="flex-[1] flex flex-col items-center px-10 pb-12 gap-4">
+        <div class="flex gap-4 w-full max-w-4xl">
+            <button onclick="startGame()" class="action-btn flex-[2] py-8 bg-sky-600 rounded-3xl font-black text-3xl text-white shadow-xl">
+                發布亂數代碼
+            </button>
+            <button id="reveal-btn" onclick="revealAnswers()" class="action-btn flex-[1.5] py-8 bg-emerald-600 rounded-3xl font-black text-3xl text-white shadow-xl opacity-30" disabled>
+                揭曉答案
+            </button>
+        </div>
+        <button onclick="resetRoom()" class="text-slate-500 font-bold text-lg hover:text-slate-300 transition-colors">重置房間系統</button>
+        <p id="status-text" class="text-xl font-mono text-yellow-500 italic">SYSTEM_READY</p>
+    </div>
+</div>
+
+<!-- 特務介面 (Mobile) -->
+<div id="player-view" class="view-section relative z-10 flex-col items-center justify-between h-screen w-full p-8 glass-container">
+    <div class="text-center pt-10">
+        <h2 id="terminal-title" class="text-3xl font-black text-sky-400 tech-font tracking-widest uppercase">Secret Terminal</h2>
+        <p id="hint-text" class="text-xl text-slate-400 mt-4 font-bold">等待代碼發布...</p>
+    </div>
+    
+    <button id="vibrate-btn" onclick="runVibration()" class="action-btn w-64 h-64 rounded-full border-[10px] border-sky-500/20 bg-sky-900/10 flex flex-col items-center justify-center gap-6 opacity-20" disabled>
+        <i class="fa-solid fa-fingerprint text-8xl text-sky-400"></i>
+        <span class="text-xl font-black text-sky-300 tech-font">SENSE</span>
+    </button>
+    
+    <div id="reveal-info" class="hidden text-center transform scale-125 transition-all">
+        <i class="fa-solid fa-mask text-6xl mb-4"></i>
+        <h3 class="text-4xl font-black italic">已鎖定同僚</h3>
+    </div>
+
+    <div class="text-center pb-8">
+        <p id="footer-text" class="text-lg text-slate-500 italic font-bold">保持沈默，感受頻率</p>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, getDocs, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = JSON.parse(__firebase_config);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'spy-game-rand';
+
+    let currentUser, vibrationPattern = [], patternIdx = -1;
+    const isHost = new URLSearchParams(window.location.search).get('mode') === 'host';
+
+    // 初始化啟動
+    async function init() {
+        document.getElementById(isHost ? 'host-view' : 'player-view').classList.add('active-view');
+        
+        await signInAnonymously(auth);
+        currentUser = auth.currentUser;
+
+        if (isHost) {
+            setupHost();
+        } else {
+            setupPlayer();
+        }
+        startRadar();
+    }
+
+    // 指揮官邏輯
+    function setupHost() {
+        const playerUrl = `${window.location.origin}${window.location.pathname}?mode=player`;
+        new QRCode(document.getElementById("qrcode"), { text: playerUrl, width: 300, height: 300 });
+
+        const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'agents'));
+        onSnapshot(q, (snap) => {
+            document.getElementById('player-count').innerText = `AGENT: ${snap.size}`;
+        });
+    }
+
+    // 隨機節奏生成器
+    function generateRandomPattern() {
+        const length = Math.floor(Math.random() * 3) + 3; // 3 到 5 個節奏點
+        let pattern = [];
+        for(let i=0; i<length; i++) {
+            // 隨機長(500-800ms)或短(100-200ms)
+            const duration = Math.random() > 0.5 ? Math.floor(Math.random()*300+500) : Math.floor(Math.random()*100+100);
+            pattern.push(duration);
+            if(i < length - 1) pattern.push(150); // 間隔固定的 150ms
+        }
+        return pattern;
+    }
+
+    window.startGame = async () => {
+        updateStatus("GENERATING CODES...", "text-sky-400");
+        const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'agents'));
+        const agents = snap.docs.map(d => d.id);
+        
+        if(agents.length < 2) {
+            updateStatus("NEED MORE AGENTS", "text-red-500");
+            return;
+        }
+
+        // 計算組數：每 2-3 人一組
+        const numGroups = Math.max(2, Math.ceil(agents.length / 3));
+        const groupPatterns = Array.from({length: numGroups}, () => generateRandomPattern());
+        
+        const batch = writeBatch(db);
+        agents.forEach((id, i) => {
+            const gIdx = i % numGroups;
+            batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'agents', id), { 
+                pattern: groupPatterns[gIdx], 
+                patternIdx: gIdx,
+                isRevealed: false 
+            });
+        });
+        await batch.commit();
+        
+        document.getElementById('reveal-btn').disabled = false;
+        document.getElementById('reveal-btn').classList.remove('opacity-30');
+        updateStatus("CODES BROADCASTED", "text-emerald-400");
+    };
+
+    window.revealAnswers = async () => {
+        updateStatus("UNMASKING...", "text-pink-500");
+        const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'agents'));
+        const batch = writeBatch(db);
+        snap.forEach(d => batch.update(d.ref, { isRevealed: true }));
+        await batch.commit();
+    };
+
+    window.resetRoom = async () => {
+        if(!confirm("重置將清除所有玩家數據，確定嗎？")) return;
+        const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'agents'));
+        const batch = writeBatch(db);
+        snap.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        location.reload();
+    };
+
+    // 特務邏輯
+    async function setupPlayer() {
+        const agentRef = doc(db, 'artifacts', appId, 'public', 'data', 'agents', currentUser.uid);
+        await setDoc(agentRef, { uid: currentUser.uid, pattern: [], patternIdx: -1, isRevealed: false });
+
+        onSnapshot(agentRef, (snap) => {
+            const data = snap.data();
+            if (!data) return;
+
+            if (data.pattern?.length > 0) {
+                vibrationPattern = data.pattern;
+                patternIdx = data.patternIdx;
+                document.getElementById('hint-text').innerText = "【代碼接收成功】";
+                document.getElementById('hint-text').className = "text-2xl text-emerald-400 mt-4 font-black animate-pulse";
+                const btn = document.getElementById('vibrate-btn');
+                btn.disabled = false;
+                btn.classList.remove('opacity-20');
+                btn.classList.add('pulse-btn');
+            }
+
+            if (data.isRevealed && patternIdx !== -1) {
+                document.body.className = `reveal-bg-${patternIdx % 6}`;
+                document.getElementById('vibrate-btn').classList.add('hidden');
+                document.getElementById('reveal-info').classList.remove('hidden');
+                document.getElementById('hint-text').classList.add('hidden');
+                document.getElementById('terminal-title').innerText = "身分確認";
+                document.getElementById('footer-text').innerText = "尋找顏色相同的特務！";
+                document.getElementById('terminal-title').classList.add('text-white');
+                document.getElementById('footer-text').classList.add('text-white');
+            }
+        });
+    }
+
+    window.runVibration = async () => {
+        if (!vibrationPattern.length) return;
+        if (navigator.vibrate) navigator.vibrate(vibrationPattern);
+        
+        // 視覺閃爍
+        for (let i = 0; i < vibrationPattern.length; i++) {
+            if (i % 2 === 0) {
+                document.body.classList.add('flashing');
+                await new Promise(r => setTimeout(r, vibrationPattern[i]));
+                document.body.classList.remove('flashing');
+            } else {
+                await new Promise(r => setTimeout(r, vibrationPattern[i]));
+            }
+        }
+    };
+
+    function updateStatus(t, c) {
+        const el = document.getElementById('status-text');
+        el.innerText = t; el.className = `text-xl font-mono italic ${c}`;
+    }
+
+    function startRadar() {
+        const canvas = document.getElementById('radarCanvas');
+        const ctx = canvas.getContext('2d');
+        let rot = 0;
+        function draw() {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            const cx = canvas.width/2, cy = canvas.height/2, r = Math.max(canvas.width, canvas.height);
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot);
+            const g = ctx.createRadialGradient(0,0,0,0,0,r/2);
+            g.addColorStop(0, 'rgba(56,189,248,0)'); g.addColorStop(1, 'rgba(56,189,248,0.1)');
+            ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,r/2,0,Math.PI*0.15); ctx.fill();
+            ctx.restore(); rot += 0.02; requestAnimationFrame(draw);
+        }
+        draw();
+    }
+    window.onload = init;
+</script>
+</body>
+</html>
