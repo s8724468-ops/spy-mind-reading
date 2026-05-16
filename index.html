@@ -3,294 +3,290 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SPY_CODE 極限隨機版</title>
+    <title>臥底讀心術 FLASH V2.9 (iPad Optimized)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Noto+Sans+TC:wght@400;900&display=swap');
+        :root { --accent: #ffffff; }
+        body { background: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; touch-action: manipulation; }
+        .view { display: none; height: 100vh; width: 100vw; flex-direction: column; }
+        .active { display: flex; }
         
-        body {
-            background-color: #020617;
-            color: #f8fafc;
-            font-family: 'Noto Sans TC', sans-serif;
-            margin: 0;
-            overflow: hidden;
-            touch-action: none;
-            transition: background-color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        /* 針對 iPad 放大 QR Code 容器 */
+        #qrcode { 
+            background: #fff; 
+            padding: 24px; 
+            border-radius: 20px; 
+            display: flex; 
+            justify-content: center; 
+            transition: transform 0.3s;
+            box-shadow: 0 0 50px rgba(255,255,255,0.1);
+        }
+        #qrcode img {
+            width: 400px !important; /* iPad 上的固定大尺寸 */
+            height: 400px !important;
         }
 
-        .tech-font { font-family: 'Orbitron', sans-serif; }
-        .glass-container { 
-            background: linear-gradient(to bottom, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.9) 100%);
-            backdrop-filter: blur(15px);
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            width: 100vw;
-            position: relative;
-            z-index: 10;
+        /* 放大操作按鈕 */
+        .giant-btn {
+            width: 75vw; height: 75vw; max-width: 500px; max-height: 500px;
+            border-radius: 50%; border: 4px solid rgba(255,255,255,0.15);
+            display: flex; align-items: center; justify-content: center;
+            background: radial-gradient(circle, #151515 0%, #000 100%);
+            box-shadow: 0 0 60px rgba(0,0,0,0.8);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        
-        #qrcode img { margin: auto; border-radius: 1rem; border: 8px solid white; }
-        .view-section { display: none; }
-        .active-view { display: flex !important; }
-        
-        @keyframes pulse-border {
-            0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.4); }
-            70% { box-shadow: 0 0 0 20px rgba(56, 189, 248, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
-        }
-        .pulse-btn { animation: pulse-border 2s infinite; }
-        .action-btn { transition: all 0.2s ease; cursor: pointer; }
-        .action-btn:active { transform: scale(0.95); }
-        .flashing { background-color: #ffffff !important; color: #000000 !important; transition: none; }
-        
-        /* 揭曉時的背景色 (更多元的配色) */
-        .reveal-bg-0 { background-color: #10b981 !important; }
-        .reveal-bg-1 { background-color: #8b5cf6 !important; }
-        .reveal-bg-2 { background-color: #f59e0b !important; }
-        .reveal-bg-3 { background-color: #ef4444 !important; }
-        .reveal-bg-4 { background-color: #06b6d4 !important; }
-        .reveal-bg-5 { background-color: #ec4899 !important; }
-        .reveal-bg-6 { background-color: #1e293b !important; }
+        .giant-btn:active { transform: scale(0.92); border-color: #fff; }
 
-        #config-error {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #ef4444;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 10px;
-            z-index: 9999;
-            display: none;
-            font-weight: bold;
+        /* 團隊顏色定義 */
+        .reveal-team-0 { background: #16a34a !important; color: #000 !important; } 
+        .reveal-team-1 { background: #9333ea !important; color: #fff !important; } 
+        .reveal-team-2 { background: #ca8a04 !important; color: #000 !important; } 
+        .reveal-team-3 { background: #dc2626 !important; color: #fff !important; } 
+        .reveal-team-4 { background: #2563eb !important; color: #fff !important; } 
+        .reveal-team-5 { background: #ea580c !important; color: #fff !important; } 
+
+        .flash-active { background: #fff !important; }
+        .flash-active * { opacity: 0 !important; }
+        
+        #setup-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 9999; display: flex;
+            flex-direction: column; align-items: center; justify-content: center;
         }
+
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; }
+        .dot-online { background: #22c55e; box-shadow: 0 0 15px #22c55e; }
+
+        @keyframes pulse-custom {
+            0% { transform: scale(1); opacity: 0.1; }
+            50% { transform: scale(1.15); opacity: 0.4; }
+            100% { transform: scale(1); opacity: 0.1; }
+        }
+        .animate-pulse-slow { animation: pulse-custom 4s infinite; }
     </style>
 </head>
 <body>
 
-<div id="config-error">系統連線異常</div>
-<canvas id="radarCanvas" style="position:fixed; top:0; left:0; pointer-events:none; z-index:0;"></canvas>
+<div id="setup-overlay">
+    <div class="text-white text-6xl mb-6 animate-bounce">⚡</div>
+    <p id="status-desc" class="text-xs uppercase tracking-[0.4em] opacity-40">System Linking...</p>
+</div>
 
-<!-- 指揮官介面 (Host) -->
-<div id="host-view" class="view-section glass-container">
-    <div class="flex-[2] flex flex-col items-center justify-center p-8 space-y-6">
-        <h1 class="text-5xl font-black tech-font text-sky-400 italic">SPY_CODE</h1>
-        <div id="qrcode" class="shadow-2xl"></div>
-        <div id="player-count" class="text-4xl font-black text-emerald-400 tech-font">AGENT: 0</div>
+<!-- 主機端視圖 (iPad Host) -->
+<div id="host-view" class="view p-12 justify-between">
+    <div class="space-y-10">
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 class="text-6xl font-black italic tracking-tighter">SPY MIND</h1>
+                <p class="text-sm mt-2 opacity-40 tracking-[0.5em]">SERVER TERMINAL V2.9</p>
+            </div>
+            <div class="text-right">
+                <p class="text-xs font-bold opacity-40 mb-1">CONNECTED AGENTS</p>
+                <p id="count" class="text-8xl font-mono leading-none">00</p>
+            </div>
+        </div>
+        
+        <div class="flex flex-col items-center">
+            <div id="qrcode"></div>
+            <p class="mt-8 text-xl font-bold opacity-30 tracking-[0.8em]">SCAN TO JOIN</p>
+        </div>
     </div>
 
-    <div class="flex-[1] flex flex-col items-center px-10 pb-12 gap-4">
-        <div class="flex gap-4 w-full max-w-4xl">
-            <button id="start-btn" onclick="startGame()" class="action-btn flex-[2] py-6 bg-sky-600 rounded-3xl font-black text-2xl text-white shadow-xl">發布亂數代碼</button>
-            <button id="reveal-btn" onclick="revealAnswers()" class="action-btn flex-[1] py-6 bg-emerald-600 rounded-3xl font-black text-2xl text-white shadow-xl opacity-30" disabled>揭曉</button>
+    <div class="grid grid-cols-1 gap-6 w-full max-w-4xl mx-auto">
+        <div id="host-msg" class="text-center py-4 text-sm border border-white/10 rounded-xl uppercase tracking-widest opacity-60">
+            等待特務連線...
         </div>
-        <button onclick="resetRoom()" class="text-slate-500 font-bold text-sm">重置系統</button>
-        <p id="status-text" class="text-lg font-mono text-yellow-500 italic">SYSTEM_READY</p>
+        <div class="grid grid-cols-2 gap-6">
+            <button onclick="distributeGroups()" class="py-10 bg-white text-black font-black text-3xl rounded-2xl active:scale-95 transition-transform">發送閃頻訊號</button>
+            <button onclick="triggerReveal()" class="py-10 bg-zinc-800 text-white font-black text-3xl rounded-2xl active:bg-red-600 transition-colors">執行全體揭曉</button>
+        </div>
+        <button onclick="resetGame()" class="py-4 text-xs text-zinc-700 uppercase tracking-[0.5em]">系統重置</button>
     </div>
 </div>
 
-<!-- 特務介面 (Player) -->
-<div id="player-view" class="view-section flex-col items-center justify-between h-screen w-full p-8 glass-container">
-    <div class="text-center pt-10">
-        <h2 id="terminal-title" class="text-3xl font-black text-sky-400 tech-font tracking-widest uppercase">Secret Terminal</h2>
-        <p id="hint-text" class="text-xl text-slate-400 mt-4 font-bold">等待代碼發布...</p>
-    </div>
-    
-    <button id="vibrate-btn" onclick="runVibration()" class="action-btn w-64 h-64 rounded-full border-[10px] border-sky-500/20 bg-sky-900/10 flex flex-col items-center justify-center gap-6 opacity-20" disabled>
-        <i class="fa-solid fa-fingerprint text-8xl text-sky-400"></i>
-        <span class="text-xl font-black text-sky-300 tech-font">SENSE</span>
-    </button>
-    
-    <div id="reveal-info" class="hidden text-center transform scale-125 transition-all">
-        <i class="fa-solid fa-mask text-6xl mb-4"></i>
-        <h3 class="text-4xl font-black italic text-white">身分已公開</h3>
+<!-- 玩家端視圖 (Player) -->
+<div id="player-view" class="view items-center justify-between p-16">
+    <div class="text-center w-full">
+        <div class="flex items-center justify-center mb-4">
+            <span class="status-dot dot-online"></span>
+            <p id="p-status" class="text-lg font-bold tracking-[0.3em] opacity-60">CONNECTED</p>
+        </div>
+        <h2 id="p-instruction" class="text-3xl font-black italic">等待主機發放代碼</h2>
     </div>
 
-    <div class="text-center pb-8">
-        <p id="footer-text" class="text-lg text-slate-500 italic font-bold">保持沈默，尋找同頻者</p>
-        <p id="player-id-tag" class="text-[10px] text-slate-700 mt-2 font-mono uppercase"></p>
+    <div class="relative">
+        <div id="flash-bg" class="absolute inset-0 rounded-full animate-pulse-slow bg-white/10 scale-150"></div>
+        <button id="flash-btn" 
+            ontouchstart="handlePress(true)" ontouchend="handlePress(false)" 
+            onmousedown="handlePress(true)" onmouseup="handlePress(false)"
+            class="giant-btn opacity-20 pointer-events-none relative z-10">
+            <span id="btn-text" class="text-sm font-black tracking-[0.3em] opacity-40">SIGNAL LOCKED</span>
+        </button>
+    </div>
+
+    <div id="id-card" class="hidden text-center scale-150">
+        <p class="text-xs font-bold uppercase mb-4 tracking-[0.6em] opacity-70">Identified As</p>
+        <div id="team-name" class="text-8xl font-black italic">---</div>
+    </div>
+    
+    <div class="w-full max-w-2xl">
+        <div class="h-[4px] bg-zinc-900 w-full rounded-full">
+            <div id="p-bar" class="w-0 h-full bg-white transition-all duration-1000 shadow-[0_0_15px_#fff]"></div>
+        </div>
+        <p class="text-xs text-center mt-6 opacity-20 tracking-widest uppercase">Encrypted Agent Channel</p>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, getDocs, query, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, getDocs, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    const firebaseConfig = JSON.parse(__firebase_config);
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'spy-game-prod';
+    const firebaseConfig = {
+        apiKey: "AIzaSyAoHd1FJze2LfNPTp0f2an_yTwSMaKiuP4",
+        authDomain: "spy-mind-reading.firebaseapp.com",
+        projectId: "spy-mind-reading",
+        storageBucket: "spy-mind-reading.firebasestorage.app",
+        messagingSenderId: "836432547281",
+        appId: "1:836432547281:web:154e9cbc061e6ff82964f0"
+    };
 
-    const isHost = new URLSearchParams(window.location.search).get('mode') === 'host';
-    let currentUser, vibrationPattern = [], patternIdx = -1;
+    const appId = "spy-game-final";
+    let db, auth, uid;
+    let mode = new URLSearchParams(window.location.search).get('mode') === 'player' ? 'player' : 'host';
+    let currentPattern = [];
+    let isFlashing = false;
+    let flashTimer = null;
 
-    startRadar();
+    document.getElementById(mode + '-view').classList.add('active');
 
     async function init() {
-        const viewId = isHost ? 'host-view' : 'player-view';
-        document.getElementById(viewId).classList.add('active-view');
-
         try {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
-            
-            const unsubscribe = onAuthStateChanged(auth, (user) => {
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+
+            await signInAnonymously(auth);
+            onAuthStateChanged(auth, (user) => {
                 if (user) {
-                    currentUser = user;
-                    if (isHost) setupHost(); else setupPlayer();
+                    uid = user.uid;
+                    document.getElementById('setup-overlay').style.opacity = "0";
+                    setTimeout(() => document.getElementById('setup-overlay').style.display = 'none', 500);
+                    if (mode === 'host') startHost(); else startPlayer();
                 }
             });
         } catch (e) {
-            document.getElementById('config-error').style.display = 'block';
+            document.getElementById('status-desc').innerText = "LINK FAILED";
         }
     }
 
-    function setupHost() {
-        const currentUrl = window.location.href.split('?')[0];
-        const playerUrl = `${currentUrl}?mode=player`;
-        document.getElementById("qrcode").innerHTML = "";
-        new QRCode(document.getElementById("qrcode"), { text: playerUrl, width: 280, height: 280 });
+    // --- 主機功能 ---
+    function startHost() {
+        const joinUrl = window.location.href.split('?')[0] + '?mode=player';
+        // 放大 QR Code 渲染尺寸
+        new QRCode(document.getElementById("qrcode"), { 
+            text: joinUrl, 
+            width: 400, 
+            height: 400,
+            correctLevel: QRCode.CorrectLevel.H 
+        });
 
-        onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'agents'), (snap) => {
-            document.getElementById('player-count').innerText = `AGENT: ${snap.size}`;
-        }, (err) => console.error(err));
+        onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'players'), (snap) => {
+            document.getElementById('count').innerText = snap.size.toString().padStart(2, '0');
+        });
 
-        window.startGame = async () => {
-            updateStatus("GENERATING RANDOM ENTROPY...", "text-sky-400");
-            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'agents'));
-            let agents = snap.docs.map(d => d.id);
-            if(agents.length < 2) return updateStatus("NEED MORE AGENTS", "text-red-500");
-
-            agents.sort(() => Math.random() - 0.5);
-            let groups = [];
-            let pool = [...agents];
-
-            // --- 極限隨機演算法：每組人數 2~無限 ---
-            // 隨機判定：有 15% 的機率全場同一組 (如果人數 > 2)
-            if (Math.random() < 0.15 && agents.length > 2) {
-                groups.push(pool.splice(0, pool.length));
-            } else {
-                while (pool.length > 0) {
-                    if (pool.length <= 3) {
-                        groups.push(pool.splice(0, pool.length));
-                    } else {
-                        // 隨機決定下一組人數，範圍從 2 到 剩餘人數
-                        // 透過隨機性，可能產生 2 人小組，也可能產生 8 人大組
-                        let maxGrab = pool.length - 2; 
-                        let groupSize = Math.floor(Math.random() * (maxGrab - 2 + 1)) + 2;
-                        groups.push(pool.splice(0, groupSize));
-                    }
-                }
-            }
-
+        window.distributeGroups = async () => {
+            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'players'));
+            if (snap.empty) return;
+            
+            const players = snap.docs.map(d => d.id).sort(() => Math.random() - 0.5);
             const batch = writeBatch(db);
-            groups.forEach((group, gIdx) => {
-                // 為每一組設計不同的震動特徵
-                const patternType = Math.floor(Math.random() * 3);
-                let p = [];
-                if(patternType === 0) p = [200, 200, 200, 200, 600]; // 短短長
-                else if(patternType === 1) p = [600, 200, 600, 200]; // 長長
-                else p = [100, 100, 100, 100, 100, 100, 100, 500]; // 快速點點長
+            const patterns = [
+                [150, 150], [400, 100], [100, 400], [250, 250], [600, 50], [50, 600]
+            ];
 
-                group.forEach(id => {
-                    batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'agents', id), { 
-                        pattern: p, patternIdx: gIdx, isRevealed: false 
-                    });
+            players.forEach((pid, i) => {
+                const groupIdx = Math.floor(i / 2);
+                batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', pid), {
+                    pattern: patterns[groupIdx % patterns.length],
+                    group: groupIdx,
+                    reveal: false
                 });
             });
             await batch.commit();
-            document.getElementById('reveal-btn').disabled = false;
-            document.getElementById('reveal-btn').classList.remove('opacity-30');
-            updateStatus(`CHAOS DEPLOYED (${groups.length} TEAMS)`, "text-emerald-400");
+            document.getElementById('host-msg').innerText = "SIGNAL SYNCED TO ALL AGENTS";
         };
 
-        window.revealAnswers = async () => {
-            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'agents'));
+        window.triggerReveal = async () => {
+            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'players'));
             const batch = writeBatch(db);
-            snap.forEach(d => batch.update(d.ref, { isRevealed: true }));
+            snap.docs.forEach(d => batch.update(d.ref, { reveal: true }));
             await batch.commit();
-            updateStatus("TRUTH REVEALED", "text-pink-500");
+            document.getElementById('host-msg').innerText = "IDENTITY REVEALED";
         };
 
-        window.resetRoom = async () => {
-            if(!confirm("確定重置？")) return;
-            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'agents'));
+        window.resetGame = async () => {
+            if(!confirm("確定要重置所有特務資料嗎？")) return;
+            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'players'));
             const batch = writeBatch(db);
-            snap.forEach(d => batch.delete(d.ref));
+            snap.docs.forEach(d => batch.delete(d.ref));
             await batch.commit();
             location.reload();
         };
     }
 
-    async function setupPlayer() {
-        const agentRef = doc(db, 'artifacts', appId, 'public', 'data', 'agents', currentUser.uid);
-        document.getElementById('player-id-tag').innerText = `ID: ${currentUser.uid.slice(0,8)}`;
-        await setDoc(agentRef, { uid: currentUser.uid, pattern: [], patternIdx: -1, isRevealed: false });
+    // --- 玩家功能 ---
+    function startPlayer() {
+        const pRef = doc(db, 'artifacts', appId, 'public', 'data', 'players', uid);
+        setDoc(pRef, { active: true, lastSeen: Date.now() }, { merge: true });
 
-        onSnapshot(agentRef, (snap) => {
+        onSnapshot(pRef, (snap) => {
             const data = snap.data();
             if (!data) return;
-            if (data.pattern?.length > 0 && vibrationPattern.length === 0) {
-                vibrationPattern = data.pattern;
-                patternIdx = data.patternIdx;
-                document.getElementById('hint-text').innerText = "代碼載入。開始搜索。";
-                document.getElementById('hint-text').className = "text-xl text-emerald-400 mt-4 font-bold";
-                document.getElementById('vibrate-btn').disabled = false;
-                document.getElementById('vibrate-btn').classList.replace('opacity-20', 'pulse-btn');
-            }
-            if (data.isRevealed && patternIdx !== -1) {
-                document.body.className = `reveal-bg-${patternIdx % 7}`;
-                document.getElementById('vibrate-btn').classList.add('hidden');
-                document.getElementById('reveal-info').classList.remove('hidden');
-                document.getElementById('terminal-title').innerText = "識別成功";
-                document.getElementById('footer-text').innerText = "尋找相同色塊的夥伴！";
-                document.body.style.transition = "background-color 1.5s ease";
-            }
-        }, (err) => console.error(err));
 
-        window.runVibration = async () => {
-            if (!vibrationPattern.length) return;
-            if (navigator.vibrate) navigator.vibrate(vibrationPattern);
-            for (let i = 0; i < vibrationPattern.length; i++) {
-                if (i % 2 === 0) {
-                    document.body.classList.add('flashing');
-                    await new Promise(r => setTimeout(r, vibrationPattern[i]));
-                    document.body.classList.remove('flashing');
-                } else await new Promise(r => setTimeout(r, vibrationPattern[i]));
+            if (data.pattern && !currentPattern.length) {
+                currentPattern = data.pattern;
+                document.getElementById('flash-btn').classList.remove('opacity-20', 'pointer-events-none');
+                document.getElementById('p-instruction').innerText = "請按住圓鈕感應頻率";
+                document.getElementById('btn-text').innerText = "READY TO SENSE";
+                document.getElementById('p-bar').style.width = "100%";
+                if (navigator.vibrate) navigator.vibrate(200);
             }
-        };
+
+            if (data.reveal) {
+                const teamIdx = data.group % 6;
+                document.getElementById('player-view').className = `view items-center justify-between p-16 active reveal-team-${teamIdx}`;
+                document.getElementById('flash-btn').classList.add('hidden');
+                document.getElementById('flash-bg').classList.add('hidden');
+                document.getElementById('id-card').classList.remove('hidden');
+                document.getElementById('team-name').innerText = `TEAM ${(data.group + 1)}`;
+                document.getElementById('p-instruction').innerText = "任務開始";
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 300]);
+            }
+        });
     }
 
-    function updateStatus(t, c) {
-        const el = document.getElementById('status-text');
-        if (el) { el.innerText = t; el.className = `text-lg font-mono italic ${c}`; }
-    }
-
-    function startRadar() {
-        const canvas = document.getElementById('radarCanvas');
-        const ctx = canvas.getContext('2d');
-        let rot = 0;
-        function draw() {
-            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-            const cx = canvas.width/2, cy = canvas.height/2, r = Math.max(canvas.width, canvas.height);
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot);
-            const g = ctx.createRadialGradient(0,0,0,0,0,r/2);
-            g.addColorStop(0, 'rgba(56,189,248,0)'); g.addColorStop(1, 'rgba(56,189,248,0.1)');
-            ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,r/2,0,Math.PI*0.3); ctx.fill();
-            ctx.restore(); rot += 0.02; requestAnimationFrame(draw);
+    window.handlePress = (isPressed) => {
+        if (!currentPattern.length) return;
+        isFlashing = isPressed;
+        if (isPressed) {
+            let step = 0;
+            const run = () => {
+                if (!isFlashing) return;
+                const isBright = step % 2 === 0;
+                document.body.classList.toggle('flash-active', isBright);
+                if (isBright && navigator.vibrate) navigator.vibrate(50);
+                flashTimer = setTimeout(run, currentPattern[step % currentPattern.length]);
+                step++;
+            };
+            run();
+        } else {
+            clearTimeout(flashTimer);
+            document.body.classList.remove('flash-active');
         }
-        draw();
-    }
+    };
+
     init();
 </script>
 </body>
