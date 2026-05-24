@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SPY_CODE 指揮官中心</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Noto+Sans+TC:wght@400;900&display=swap');
+        body { background-color: #020617; color: #f8fafc; font-family: 'Noto Sans TC', sans-serif; margin: 0; overflow: hidden; touch-action: none; transition: background-color 0.6s; }
+        .tech-font { font-family: 'Orbitron', sans-serif; }
+        .glass-container { background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(2, 6, 23, 0.95)); display: flex; flex-direction: column; height: 100vh; width: 100vw; position: relative; z-index: 10; }
+        #qrcode { background: #fff; padding: 20px; border-radius: 1rem; box-shadow: 0 0 30px rgba(56, 189, 248, 0.3); }
+        #qrcode img { margin: auto; }
+        .view-section { display: none; }
+        .active-view { display: flex !important; }
+        .action-btn { transition: all 0.2s ease; cursor: pointer; border: 1px solid rgba(56, 189, 248, 0.3); }
+        .action-btn:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+
+<!-- 指揮官介面 (Host View) -->
+<div id="host-view" class="view-section glass-container items-center justify-center p-6">
+    <div class="mb-8 text-center">
+        <h1 class="text-6xl font-black tech-font text-sky-400 tracking-tighter italic">SPY_CODE</h1>
+        <p class="text-sky-600 font-bold tracking-widest mt-2 uppercase">指揮官戰術資訊終端</p>
+    </div>
+    
+    <div id="qrcode" class="mb-8"></div>
+    
+    <div id="player-count" class="text-5xl font-black text-emerald-400 tech-font mb-8">AGENT: 0</div>
+    
+    <div class="flex gap-6 w-full max-w-2xl">
+        <button onclick="startGame()" class="action-btn flex-[2] py-8 bg-sky-900/40 hover:bg-sky-900/60 rounded-2xl font-black text-2xl text-white">啟動任務分配</button>
+        <button onclick="revealAnswers()" class="action-btn flex-[1] py-8 bg-emerald-900/40 hover:bg-emerald-900/60 rounded-2xl font-black text-2xl text-white">揭曉身份</button>
+    </div>
+    <p class="mt-8 text-slate-500 font-mono text-sm">SYSTEM STATUS: READY FOR UPLINK</p>
+</div>
+
+<!-- 特務介面 (Player View) -->
+<div id="player-view" class="view-section flex-col items-center justify-between h-screen w-full p-8 bg-black">
+    <div class="text-center pt-12">
+        <h2 class="text-2xl font-bold text-sky-400 tech-font uppercase tracking-widest">任務接收終端</h2>
+        <div id="hint-text" class="text-2xl font-bold text-slate-200 mt-6 bg-slate-900/50 p-6 rounded-xl border border-sky-900">等待指揮官指令...</div>
+    </div>
+    
+    <button id="vibrate-btn" onclick="runVibration()" class="action-btn w-72 h-72 rounded-full border-[8px] border-sky-500/30 bg-sky-900/20 flex flex-col items-center justify-center gap-4 opacity-50" disabled>
+        <i class="fa-solid fa-fingerprint text-9xl text-sky-400"></i>
+        <span class="text-xl font-black text-sky-300 tech-font tracking-widest">SENSE</span>
+    </button>
+    
+    <div id="reveal-info" class="hidden text-center bg-white/10 p-6 rounded-2xl border border-white/20">
+        <h3 class="text-3xl font-black text-white italic">身份已曝光：確認通訊代碼</h3>
+    </div>
+    
+    <div class="text-center pb-8">
+        <p class="text-slate-500 italic font-bold">—— 保持通訊靜默 ——</p>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const config = {
+        apiKey: "AIzaSyAoHd1FJze2LfNPTp0f2an_yTwSMaKiuP4",
+        authDomain: "spy-mind-reading.firebaseapp.com",
+        projectId: "spy-mind-reading",
+        storageBucket: "spy-mind-reading.firebasestorage.app",
+        messagingSenderId: "836432547281",
+        appId: "1:836432547281:web:154e9cbc061e6ff82964f0",
+        measurementId: "G-NP5BZF2V6E"
+    };
+    
+    const app = initializeApp(config);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = 'spy-game-prod';
+
+    const params = new URLSearchParams(window.location.search);
+    const isHost = params.get('mode') !== 'player'; 
+
+    let currentUser, vibrationPattern = [];
+
+    async function init() {
+        document.getElementById(isHost ? 'host-view' : 'player-view').classList.add('active-view');
+        await signInAnonymously(auth);
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                isHost ? setupHost() : setupPlayer();
+            }
+        });
+    }
+
+    function setupHost() {
+        const playerUrl = `${window.location.href.split('?')[0]}?mode=player`;
+        new QRCode(document.getElementById("qrcode"), { text: playerUrl, width: 280, height: 280 });
+
+        onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'agents'), (snap) => {
+            document.getElementById('player-count').innerText = `AGENT: ${snap.size}`;
+        });
+
+        window.startGame = async () => {
+            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'agents'));
+            let agents = snap.docs.map(d => d.id);
+            agents.sort(() => Math.random() - 0.5);
+            const batch = writeBatch(db);
+            
+            let groupIdx = 0;
+            for(let i=0; i<agents.length; i+=2) {
+                const p = [[300,100,300], [500,200,500]][Math.floor(Math.random()*2)];
+                batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'agents', agents[i]), { pattern: p, patternIdx: groupIdx, isRevealed: false });
+                if(agents[i+1]) batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'agents', agents[i+1]), { pattern: p, patternIdx: groupIdx, isRevealed: false });
+                groupIdx++;
+            }
+            await batch.commit();
+        };
+
+        window.revealAnswers = async () => {
+            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'agents'));
+            const batch = writeBatch(db);
+            snap.forEach(d => batch.update(d.ref, { isRevealed: true }));
+            await batch.commit();
+        };
+    }
+
+    function setupPlayer() {
+        const agentRef = doc(db, 'artifacts', appId, 'public', 'data', 'agents', currentUser.uid);
+        setDoc(agentRef, { uid: currentUser.uid, pattern: [], isRevealed: false }, {merge: true});
+
+        onSnapshot(agentRef, (snap) => {
+            const data = snap.data();
+            if (!data) return;
+            if (data.pattern?.length > 0) {
+                vibrationPattern = data.pattern;
+                document.getElementById('hint-text').innerText = "目標代碼已獲取：請開始感應";
+                document.getElementById('vibrate-btn').disabled = false;
+                document.getElementById('vibrate-btn').style.opacity = "1";
+            }
+            if (data.isRevealed) {
+                document.getElementById('reveal-info').classList.remove('hidden');
+                document.getElementById('hint-text').innerText = "連線已鎖定：身份曝光";
+            }
+        });
+    }
+
+    window.runVibration = () => { if(navigator.vibrate) navigator.vibrate(vibrationPattern); };
+    window.onload = init;
+</script>
+</body>
+</html>
